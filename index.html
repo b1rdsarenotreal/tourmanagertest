@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tour Manager</title>
+<style>
+  :root{
+    --court: #4B2482;
+    --court-line: #F3E9FF;
+    --clay: #E3056E;
+    --ink: #1E1029;
+    --paper: #F8F5FB;
+    --paper-2: #EDE3F6;
+    --accent: #FBEB14;
+    --ok: #3E7D5A;
+    --danger: #B4432E;
+    font-size: 15px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:18px 16px 60px;}
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+    border-bottom:3px solid var(--court); padding-bottom:10px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  header.top h1{
+    font-size:22px; margin:0; letter-spacing:0.02em; font-weight:800;
+    text-transform:uppercase;
+  }
+  header.top h1 span{color:var(--clay);}
+  .week-pill{
+    background:var(--court); color:var(--court-line); font-weight:700;
+    padding:6px 14px; border-radius:2px; font-size:13px; letter-spacing:.03em; text-align:right;
+  }
+  .week-pill small{display:block;font-weight:500;opacity:.75;font-size:11px;}
+  nav.tabs{display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid #DDD0EE; flex-wrap:wrap;}
+  nav.tabs button{
+    background:none;border:none;padding:10px 14px;font-size:13.5px;font-weight:700;
+    letter-spacing:.03em;text-transform:uppercase;cursor:pointer;color:#7A5A9E;
+    border-bottom:3px solid transparent; margin-bottom:-1px;
+  }
+  nav.tabs button.active{color:var(--court); border-bottom-color:var(--clay);}
+  section.panel{display:none;}
+  section.panel.active{display:block;}
+
+  .card{background:#fff;border:1px solid #E1D3F2;border-radius:6px;padding:16px;margin-bottom:14px;}
+  .card h2{margin:0 0 10px;font-size:15px;text-transform:uppercase;letter-spacing:.04em;color:var(--court);}
+  .muted{color:#7C6A94;font-size:12.5px;}
+
+  .month-label{font-weight:800;color:var(--clay);text-transform:uppercase;font-size:12px;letter-spacing:.08em;margin:18px 0 6px;}
+  .month-label:first-child{margin-top:0;}
+  .week-block{border:1px solid transparent;border-radius:5px;margin-bottom:2px;}
+  .week-block.current-week{border-color:var(--accent);background:#FDF6E0;}
+  .event-row{
+    display:flex; align-items:center; gap:12px; padding:9px 10px; border-radius:4px;
+  }
+  .event-row + .event-row{border-top:1px solid #eee7d5;}
+  .event-row.completed{opacity:.7;}
+  .status-dot{width:9px;height:9px;border-radius:50%;flex:none;}
+  .status-dot.completed{background:var(--ok);}
+  .status-dot.current{background:var(--accent);}
+  .status-dot.upcoming{background:#cfc9b8;}
+  .ev-week{font-size:11px;color:#9784B3;width:34px;flex:none;}
+  .ev-name{font-weight:700;flex:1;min-width:160px;}
+  .ev-city{font-size:12px;color:#7C6A94;flex:1;min-width:140px;}
+  .ev-cat{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--paper-2);flex:none;}
+  .ev-result{font-size:12px;color:#2E1E3F;flex:2;min-width:200px;}
+  .btn{
+    background:var(--court); color:#fff; border:none; padding:8px 14px; border-radius:4px;
+    font-weight:700; font-size:12.5px; cursor:pointer; letter-spacing:.02em; text-transform:uppercase;
+  }
+  .btn:hover{background:#371a63;}
+  .btn.secondary{background:transparent;color:var(--court);border:1.5px solid var(--court);}
+  .btn.secondary:hover{background:#F1E7FA;}
+  .btn.small{padding:5px 10px;font-size:11px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#5C4478;display:block;margin-bottom:4px;}
+  input[type=text], input[type=number], select{
+    width:100%; padding:7px 8px; border:1px solid #D3C0E8; border-radius:4px; font-size:14px; background:#FFFDFB;
+  }
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  .field{margin-bottom:12px;}
+  .seed-entry{display:flex;gap:8px;align-items:center;margin-bottom:6px;}
+  .seed-entry .snum{width:26px;font-weight:800;color:var(--clay);font-size:13px;text-align:right;}
+  .seed-entry input{flex:1;}
+
+  .bracket-wrap{overflow-x:auto;padding-bottom:10px;}
+  .bracket{display:flex;gap:34px;min-width:max-content;padding:6px 2px;}
+  .round-col{display:flex;flex-direction:column;justify-content:space-around;min-width:230px;}
+  .round-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--court);text-align:center;margin-bottom:8px;}
+  .match{border:1px solid #D8C4EC;border-radius:5px;margin:10px 0;background:#FFFDFB;}
+  .mrow{display:flex;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #EBDCF6;cursor:pointer;}
+  .mrow:last-child{border-bottom:none;}
+  .mrow:hover{background:#F3E9FB;}
+  .mrow.winner{background:#E6F5EB;}
+  .mrow.bye{color:#B49CCB;font-style:italic;cursor:default;}
+  .mrow .seedno{font-size:10px;color:#B49CCB;width:16px;flex:none;}
+  .mname{flex:1;font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mrow.winner .mname{color:var(--ok);}
+  .mname-input{border:none;background:transparent;padding:2px;font-size:13px;width:100%;font-weight:600;}
+  .checkmark{color:var(--ok);font-weight:800;margin-right:2px;flex:none;}
+  .msets{display:flex;gap:3px;flex:none;}
+  .msets input{width:26px;height:24px;text-align:center;padding:0;font-size:12.5px;border:1px solid #D8C4EC;border-radius:3px;background:#fff;}
+  .msets input:disabled{background:#EFE6F7;border-color:#DDCBEE;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;}
+  .champion-banner{
+    background:linear-gradient(135deg,var(--court),var(--clay));color:#fff;padding:16px 20px;border-radius:6px;
+    display:flex;align-items:center;justify-content:space-between;margin-top:16px;flex-wrap:wrap;gap:10px;
+  }
+  .champion-banner .title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);}
+  .champion-banner .name{font-size:20px;font-weight:800;}
+  .tourn-card-header{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;}
+  .done-badge{background:var(--ok);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  table th{text-align:left;padding:8px 8px;border-bottom:2px solid var(--court);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#5C4478;white-space:nowrap;}
+  table td{padding:7px 8px;border-bottom:1px solid #EBDCF6;}
+  table tr.top10{background:#F7ECFA;}
+  table tr.rank-row{cursor:pointer;}
+  table tr.rank-row:hover{background:#F4E9FA;}
+  .rank-no{font-weight:800;color:var(--clay);width:30px;}
+  .search-bar{margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .search-bar input{max-width:260px;}
+  .breakdown-row td{background:#F6ECFA;padding:10px 14px;}
+  .breakdown-chip{display:inline-block;background:var(--paper-2);border-radius:4px;padding:3px 8px;margin:2px 4px 2px 0;font-size:12px;}
+  .breakdown-chip b{color:var(--clay);}
+  .grid-view{overflow-x:auto;}
+  .grid-view table{font-size:12px;}
+  .grid-view td, .grid-view th{padding:5px 6px;text-align:center;}
+  .grid-view td:nth-child(2), .grid-view th:nth-child(2){text-align:left;position:sticky;left:0;background:#fff;}
+
+  .pt-table th, .pt-table td{text-align:center;}
+  .pt-table td:first-child, .pt-table th:first-child{text-align:left;}
+  .pt-table input{width:64px;text-align:center;padding:4px;}
+
+  .empty-state{text-align:center;padding:40px 20px;color:#8D7AA8;}
+  .toast{
+    position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 18px;border-radius:6px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;
+  }
+  .toast.show{opacity:1;}
+  .rr-grid{display:grid;grid-template-columns:1fr 90px 90px;gap:8px;align-items:center;margin-bottom:8px;}
+  .rr-grid.head{font-size:11px;font-weight:800;text-transform:uppercase;color:#5C4478;}
+  .helptext{font-size:12px;color:#7C6A94;margin-top:6px;line-height:1.5;}
+  .flag{margin-right:3px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>Tour <span>Manager</span></h1>
+    <div class="week-pill" id="weekPill">—</div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="season" class="active">Season</button>
+    <button data-tab="draw">This Week</button>
+    <button data-tab="rankings">Rankings</button>
+    <button data-tab="points">Points Table</button>
+  </nav>
+
+  <section class="panel active" id="panel-season"></section>
+  <section class="panel" id="panel-draw"></section>
+  <section class="panel" id="panel-rankings"></section>
+  <section class="panel" id="panel-points"></section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const WEEK_LABELS = [1, 2, "3/4", 5, 6, 7, 8, 9, "10/11", "12/13", 14, 15, 16, 17, 18, 19, 20, "21/22", 23, 24, "25/26", 27, 28, 29, 30, 31, 32, 33, 34, "35/36", 37, 38, 39, 40, 41, 42, 43, 44];
+const SEED_PLAYERS = [{"name": "Daniela Hantuchová", "total": 6755, "pts": [0, 300, 720, 0, 0, 100, 0, 150, 360, 100, 0, 45, 0, 0, 100, 1000, 0, 720, 0, 300, 180, 0, 0, 0, 500, 500, 360, 0, 300, 0, 0, 0, 360, 360, 0, 0, 0, 300]}, {"name": "Caroline Wozniacki", "total": 6475, "pts": [0, 500, 180, 0, 0, 100, 0, 0, 600, 60, 150, 180, 0, 180, 100, 360, 0, 2000, 0, 100, 180, 0, 0, 0, 0, 45, 100, 360, 0, 50, 0, 0, 180, 600, 0, 0, 0, 450]}, {"name": "Marion Bartoli", "total": 5730, "pts": [20, 0, 45, 0, 0, 180, 0, 0, 100, 60, 0, 100, 0, 100, 0, 100, 300, 100, 0, 45, 2000, 0, 0, 0, 300, 0, 0, 100, 0, 100, 100, 0, 600, 180, 100, 0, 0, 1100]}, {"name": "Li Na", "total": 5185, "pts": [0, 0, 180, 0, 0, 360, 0, 0, 60, 60, 0, 0, 0, 45, 0, 0, 100, 360, 150, 0, 100, 0, 0, 0, 0, 100, 360, 50, 0, 2000, 0, 0, 0, 360, 0, 100, 0, 800]}, {"name": "Venus Williams", "total": 4720, "pts": [0, 0, 2000, 0, 0, 100, 0, 0, 0, 180, 0, 0, 0, 0, 1000, 0, 0, 360, 0, 0, 360, 0, 0, 0, 0, 0, 0, 0, 0, 720, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Agnieszka Radwańska", "total": 4695, "pts": [0, 100, 100, 0, 0, 0, 0, 0, 60, 100, 0, 0, 0, 45, 100, 100, 0, 100, 0, 500, 360, 0, 0, 0, 100, 300, 1000, 100, 0, 180, 0, 0, 1000, 0, 0, 0, 0, 450]}, {"name": "Flavia Pennetta", "total": 4310, "pts": [0, 0, 0, 0, 500, 600, 0, 0, 1000, 0, 0, 0, 0, 0, 360, 180, 0, 45, 0, 180, 180, 45, 250, 0, 0, 0, 0, 100, 180, 180, 0, 0, 0, 180, 0, 180, 0, 150]}, {"name": "Patty Schnyder", "total": 4085, "pts": [0, 0, 0, 0, 45, 50, 0, 0, 60, 1000, 0, 100, 0, 45, 100, 50, 0, 180, 0, 0, 720, 45, 20, 0, 0, 0, 0, 1000, 0, 100, 0, 0, 0, 180, 45, 45, 0, 300]}, {"name": "Samantha Stosur", "total": 3835, "pts": [0, 100, 100, 0, 0, 100, 0, 0, 100, 180, 0, 500, 0, 100, 0, 600, 0, 720, 0, 100, 180, 0, 0, 0, 100, 0, 0, 0, 45, 100, 0, 0, 360, 0, 150, 0, 0, 300]}, {"name": "Petra Kvitová", "total": 3525, "pts": [150, 0, 1200, 0, 0, 45, 0, 0, 360, 0, 0, 45, 0, 0, 50, 0, 0, 0, 0, 0, 100, 0, 0, 45, 100, 250, 0, 600, 0, 100, 0, 0, 180, 50, 250, 0, 0, 0]}, {"name": "Nadia Petrova", "total": 3420, "pts": [45, 100, 180, 0, 0, 0, 0, 0, 60, 100, 0, 45, 0, 0, 100, 100, 0, 180, 0, 45, 720, 0, 0, 0, 0, 100, 600, 360, 0, 360, 0, 45, 180, 100, 0, 0, 0, 0]}, {"name": "Sara Errani", "total": 3270, "pts": [250, 100, 45, 0, 0, 150, 0, 45, 0, 60, 0, 45, 0, 180, 180, 0, 500, 100, 100, 250, 0, 0, 100, 45, 0, 180, 180, 180, 100, 180, 0, 0, 0, 180, 20, 100, 0, 0]}, {"name": "Svetlana Kuznetsova", "total": 3015, "pts": [45, 45, 360, 0, 0, 180, 0, 0, 60, 60, 0, 0, 0, 300, 0, 0, 0, 100, 0, 180, 180, 0, 0, 0, 0, 45, 0, 100, 0, 360, 0, 0, 0, 1000, 0, 0, 0, 0]}, {"name": "Francesca Schiavone", "total": 2845, "pts": [0, 45, 45, 0, 0, 0, 0, 0, 100, 100, 0, 0, 0, 45, 180, 360, 0, 100, 0, 45, 360, 0, 0, 0, 45, 0, 50, 0, 500, 720, 0, 0, 50, 100, 0, 0, 0, 0]}, {"name": "Jelena Janković", "total": 2825, "pts": [0, 0, 0, 0, 0, 180, 0, 250, 60, 100, 0, 300, 0, 500, 0, 100, 0, 180, 0, 0, 100, 0, 0, 100, 0, 45, 180, 50, 0, 100, 0, 0, 180, 100, 0, 300, 0, 0]}, {"name": "Andrea Petkovic", "total": 2670, "pts": [45, 0, 45, 0, 45, 360, 0, 0, 100, 60, 0, 20, 0, 0, 100, 50, 0, 45, 45, 45, 0, 0, 0, 150, 45, 0, 0, 0, 100, 1200, 0, 0, 100, 50, 20, 45, 0, 0]}, {"name": "Ana Ivanovic", "total": 2560, "pts": [0, 0, 100, 0, 0, 0, 0, 0, 180, 100, 0, 0, 0, 0, 0, 0, 0, 1200, 0, 100, 180, 0, 0, 0, 45, 100, 100, 0, 0, 360, 0, 45, 0, 50, 0, 0, 0, 0]}, {"name": "Dominika Cibulková", "total": 2425, "pts": [45, 180, 180, 0, 0, 0, 0, 45, 100, 100, 0, 0, 0, 0, 0, 100, 0, 180, 0, 100, 100, 0, 0, 250, 100, 45, 100, 0, 0, 180, 0, 0, 100, 0, 20, 500, 0, 0]}, {"name": "Shahar Pe'er", "total": 2015, "pts": [100, 150, 0, 0, 0, 100, 0, 0, 60, 600, 0, 0, 0, 45, 360, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 50, 0, 0, 50, 0, 0, 100, 50, 250, 0, 0, 0]}, {"name": "Victoria Azarenka", "total": 1840, "pts": [0, 45, 360, 0, 0, 50, 0, 0, 180, 360, 45, 180, 0, 0, 50, 0, 0, 100, 0, 0, 50, 0, 0, 0, 45, 0, 0, 50, 0, 180, 0, 0, 100, 0, 0, 45, 0, 0]}, {"name": "Maria Sharapova", "total": 1790, "pts": [0, 0, 100, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 180, 0, 0, 1200, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 50, 100, 0, 0, 0, 0]}, {"name": "Alizé Cornet", "total": 1675, "pts": [150, 150, 45, 0, 100, 0, 20, 20, 0, 0, 0, 250, 0, 100, 100, 0, 250, 100, 0, 0, 100, 100, 45, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 45, 0, 0, 0]}, {"name": "Sybille Bammer", "total": 1495, "pts": [0, 0, 45, 0, 250, 50, 100, 0, 60, 60, 0, 0, 0, 0, 100, 100, 100, 180, 0, 150, 50, 0, 0, 0, 0, 0, 100, 0, 0, 50, 0, 0, 0, 0, 100, 0, 0, 0]}, {"name": "Dinara Safina", "total": 1445, "pts": [0, 0, 720, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 180, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 180, 100, 100, 0, 45, 0, 50, 0, 0, 0, 0]}, {"name": "Elena Vesnina", "total": 1425, "pts": [45, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 180, 75, 0, 100, 0, 0, 180, 0, 0, 0, 250, 0, 50, 0, 180, 50, 0, 150, 0, 0, 100, 0, 0, 0]}, {"name": "Serena Williams", "total": 1420, "pts": [0, 100, 180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 600, 180, 0, 0, 0, 0, 360, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Olga Govortsova", "total": 1385, "pts": [0, 0, 45, 0, 45, 100, 0, 0, 0, 0, 45, 45, 0, 0, 0, 0, 180, 360, 20, 0, 0, 0, 0, 0, 45, 0, 0, 100, 100, 100, 100, 0, 0, 0, 0, 100, 0, 0]}, {"name": "Magdaléna Rybáriková", "total": 1365, "pts": [0, 0, 45, 0, 0, 0, 250, 0, 0, 0, 20, 0, 0, 0, 20, 50, 100, 0, 100, 0, 0, 0, 250, 0, 150, 0, 0, 0, 0, 180, 0, 100, 0, 0, 100, 0, 0, 0]}, {"name": "Lucie Šafářová", "total": 1315, "pts": [20, 20, 45, 0, 0, 0, 0, 45, 0, 360, 0, 100, 0, 0, 0, 50, 0, 0, 0, 0, 100, 100, 100, 0, 0, 0, 0, 0, 0, 50, 45, 0, 0, 100, 0, 180, 0, 0]}, {"name": "Ágnes Szávay", "total": 1280, "pts": [0, 0, 360, 0, 100, 0, 150, 20, 60, 0, 0, 0, 0, 0, 45, 0, 0, 100, 0, 0, 50, 150, 45, 0, 0, 0, 0, 0, 0, 50, 0, 100, 50, 0, 0, 0, 0, 0]}, {"name": "Ekaterina Makarova", "total": 1275, "pts": [0, 0, 0, 0, 0, 50, 0, 0, 60, 0, 100, 20, 0, 0, 150, 0, 0, 100, 250, 0, 100, 0, 0, 150, 100, 0, 0, 0, 0, 50, 0, 0, 100, 0, 0, 45, 0, 0]}, {"name": "Julia Görges", "total": 1260, "pts": [45, 45, 0, 0, 150, 0, 0, 20, 30, 60, 45, 45, 0, 45, 20, 0, 45, 0, 0, 0, 50, 0, 100, 250, 0, 0, 0, 0, 0, 0, 45, 150, 0, 50, 20, 45, 0, 0]}, {"name": "Anna Chakvetadze", "total": 1245, "pts": [0, 0, 180, 0, 0, 0, 0, 0, 100, 60, 0, 0, 0, 0, 0, 0, 0, 180, 45, 0, 50, 250, 150, 0, 0, 20, 0, 0, 0, 100, 0, 20, 0, 0, 45, 45, 0, 0]}, {"name": "Roberta Vinci", "total": 1235, "pts": [0, 20, 0, 0, 0, 0, 250, 0, 0, 0, 0, 45, 0, 0, 50, 0, 45, 360, 0, 20, 50, 45, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 150, 100, 0, 0]}, {"name": "Maria Kirilenko", "total": 1150, "pts": [0, 0, 100, 0, 0, 0, 0, 0, 100, 0, 250, 0, 0, 0, 0, 0, 0, 45, 0, 20, 50, 0, 0, 0, 180, 0, 0, 0, 0, 360, 0, 45, 0, 0, 0, 0, 0, 0]}, {"name": "Gisela Dulko", "total": 1015, "pts": [0, 250, 180, 0, 0, 45, 0, 0, 60, 0, 0, 100, 0, 45, 0, 0, 0, 45, 0, 0, 50, 0, 0, 0, 0, 45, 0, 50, 0, 0, 0, 0, 50, 50, 0, 45, 0, 0]}, {"name": "Kateryna Bondarenko", "total": 1010, "pts": [250, 250, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 50, 0, 0, 0, 0, 100, 25, 50, 45, 50, 0, 0, 100, 0, 0, 0, 0, 0]}, {"name": "Iveta Benešová", "total": 1005, "pts": [0, 45, 0, 0, 100, 0, 0, 20, 30, 30, 45, 150, 0, 20, 0, 0, 0, 0, 0, 0, 50, 0, 20, 0, 0, 45, 0, 50, 0, 0, 0, 250, 50, 0, 0, 100, 0, 0]}, {"name": "Sorana Cîrstea", "total": 985, "pts": [0, 0, 0, 0, 45, 100, 45, 20, 0, 0, 150, 20, 0, 0, 20, 0, 0, 0, 0, 45, 0, 100, 0, 0, 45, 45, 100, 0, 0, 0, 250, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sofia Arvidsson", "total": 935, "pts": [100, 100, 0, 0, 0, 250, 0, 0, 0, 30, 20, 20, 0, 0, 0, 0, 0, 45, 0, 0, 0, 100, 0, 100, 0, 150, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Timea Bacszinsky", "total": 925, "pts": [0, 55, 100, 0, 45, 50, 0, 0, 180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 45, 20, 0, 0, 0, 0, 180, 0, 0, 0, 0, 0, 0, 0, 150, 0, 0]}, {"name": "Angelique Kerber", "total": 865, "pts": [0, 0, 0, 0, 0, 265, 20, 0, 0, 0, 0, 100, 0, 0, 0, 0, 45, 45, 10, 20, 50, 45, 0, 0, 0, 45, 0, 0, 0, 180, 0, 0, 0, 0, 20, 20, 0, 0]}, {"name": "Julie Coin", "total": 800, "pts": [0, 0, 0, 0, 180, 0, 0, 0, 60, 60, 0, 0, 0, 250, 20, 0, 45, 0, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 45, 0, 0, 0]}, {"name": "Alla Kudryavtseva", "total": 785, "pts": [0, 20, 45, 0, 45, 0, 45, 0, 0, 0, 0, 20, 0, 0, 0, 0, 20, 45, 0, 0, 50, 0, 0, 0, 0, 0, 75, 0, 0, 0, 150, 250, 0, 0, 20, 0, 0, 0]}, {"name": "Alberta Brianti", "total": 780, "pts": [20, 0, 130, 0, 0, 70, 0, 0, 30, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 50, 20, 45, 0, 0, 0, 0, 0, 0, 0, 250, 20, 0, 0, 45, 0, 0, 0]}, {"name": "Alona Bondarenko", "total": 775, "pts": [0, 20, 180, 0, 0, 0, 0, 0, 60, 0, 45, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 180, 100, 0, 0, 0, 0, 50, 50, 45, 0, 0, 0]}, {"name": "Peng Shuai", "total": 745, "pts": [20, 0, 0, 0, 0, 0, 0, 0, 30, 0, 100, 0, 0, 0, 250, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 250, 0, 0]}, {"name": "Zheng Jie", "total": 725, "pts": [0, 100, 0, 0, 0, 0, 0, 0, 60, 60, 0, 0, 0, 0, 0, 0, 180, 0, 0, 45, 0, 0, 0, 0, 0, 0, 180, 50, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "María José Martínez Sánchez", "total": 695, "pts": [0, 45, 45, 0, 0, 0, 0, 0, 0, 100, 20, 20, 0, 0, 0, 50, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 45, 50, 0, 20, 0, 100, 0, 100, 0, 0]}, {"name": "Aravane Rezaï", "total": 680, "pts": [0, 65, 0, 0, 0, 0, 0, 0, 30, 30, 0, 0, 0, 0, 0, 0, 0, 45, 0, 65, 50, 150, 0, 0, 0, 45, 50, 50, 0, 50, 0, 0, 50, 0, 0, 0, 0, 0]}, {"name": "Jill Craybas", "total": 675, "pts": [0, 45, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 100, 45, 45, 0, 180, 0, 0, 0, 0, 100, 20, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Jarmila Groth", "total": 650, "pts": [0, 0, 360, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 45, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 100, 20, 0, 0, 0, 20, 0, 0]}, {"name": "Melanie Oudin", "total": 640, "pts": [0, 20, 0, 0, 0, 150, 0, 0, 30, 30, 250, 0, 0, 0, 50, 0, 0, 45, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Klára Zakopalová", "total": 640, "pts": [0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 50, 0, 100, 0, 0, 100, 0, 0, 20, 20, 0, 0, 100, 0, 0, 0, 0, 100, 50, 0, 0, 0, 0]}, {"name": "Anastasia Rodionova", "total": 640, "pts": [45, 0, 0, 0, 100, 0, 100, 0, 0, 180, 0, 0, 0, 0, 20, 0, 0, 45, 10, 45, 0, 45, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anastasia Pavlyuchenkova", "total": 610, "pts": [20, 0, 0, 0, 100, 75, 0, 0, 0, 30, 20, 0, 0, 0, 50, 100, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 100, 0, 50, 0, 0, 0, 0, 0, 45, 0, 0]}, {"name": "Bojana Jovanovski", "total": 590, "pts": [20, 0, 30, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 45, 25, 0, 120, 75, 0, 0, 50, 0, 0, 20, 0, 0, 25, 0, 0, 0, 45, 20, 0, 100, 0, 0, 0, 0]}, {"name": "Evgeniya Rodina", "total": 560, "pts": [0, 0, 75, 0, 320, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0]}, {"name": "Vera Zvonareva", "total": 555, "pts": [0, 0, 100, 0, 0, 180, 0, 0, 0, 0, 0, 45, 0, 0, 180, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kimiko Date-Krumm", "total": 545, "pts": [0, 20, 0, 0, 45, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 125, 205, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Carla Suárez Navarro", "total": 535, "pts": [100, 100, 45, 0, 0, 100, 20, 0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0]}, {"name": "Sandra Záhlavová", "total": 530, "pts": [20, 0, 0, 0, 0, 35, 35, 15, 0, 0, 15, 0, 0, 0, 75, 0, 20, 0, 20, 60, 50, 20, 45, 0, 0, 20, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Simona Halep", "total": 530, "pts": [45, 45, 0, 0, 0, 0, 0, 0, 0, 0, 60, 35, 0, 20, 0, 0, 0, 130, 0, 0, 50, 0, 0, 45, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sloane Stephens", "total": 525, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 205, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 250, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anabel Medina Garrigues", "total": 525, "pts": [0, 0, 0, 0, 0, 50, 0, 45, 30, 60, 100, 0, 0, 100, 0, 0, 20, 0, 0, 0, 0, 0, 0, 20, 0, 0, 50, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0]}, {"name": "Pauline Parmentier", "total": 520, "pts": [0, 0, 100, 0, 0, 45, 20, 0, 0, 0, 0, 0, 0, 45, 0, 0, 45, 0, 0, 0, 0, 0, 150, 45, 0, 0, 0, 0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kim Clijsters", "total": 505, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 30, 30, 100, 0, 0, 0, 0, 0, 0, 0, 0, 100, 50, 0, 0, 0, 0, 0, 50, 50, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yanina Wickmayer", "total": 495, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 50, 0, 0, 45, 45, 0, 0, 0, 0, 0, 0, 180, 50, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0]}, {"name": "Polona Hercog", "total": 480, "pts": [0, 0, 0, 0, 0, 20, 20, 20, 0, 30, 20, 0, 0, 0, 25, 205, 0, 45, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 50, 25, 0, 0, 0, 0]}, {"name": "Alexandra Dulgheru", "total": 465, "pts": [0, 0, 0, 0, 0, 75, 0, 0, 0, 30, 20, 0, 0, 0, 50, 25, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 25, 75, 0, 0, 0, 20, 50, 75, 0, 0, 0, 0]}, {"name": "Kaia Kanepi", "total": 460, "pts": [0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 10, 0, 0, 0, 20, 0, 0, 0, 0, 25, 65, 80, 0, 0, 75, 125, 0, 0, 0, 0]}, {"name": "Kirsten Flipkens", "total": 410, "pts": [0, 60, 0, 0, 0, 75, 0, 0, 30, 0, 20, 0, 0, 0, 0, 25, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Andrea Hlaváčková", "total": 410, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 210, 0, 100, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Aleksandra Wozniak", "total": 405, "pts": [0, 0, 0, 0, 0, 0, 0, 100, 60, 0, 0, 0, 0, 0, 45, 50, 0, 45, 10, 0, 50, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Arantxa Parra Santonja", "total": 400, "pts": [0, 0, 30, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 20, 15, 50, 0, 45, 0, 60, 100, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Yaroslava Shvedova", "total": 400, "pts": [0, 20, 0, 0, 0, 0, 0, 0, 0, 30, 20, 0, 0, 0, 50, 50, 0, 0, 10, 20, 100, 0, 0, 0, 0, 0, 0, 50, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Vania King", "total": 400, "pts": [100, 0, 0, 0, 0, 20, 0, 0, 0, 30, 20, 0, 0, 0, 0, 0, 20, 0, 10, 0, 30, 0, 0, 0, 0, 0, 75, 25, 0, 50, 0, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Justine Henin", "total": 395, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 180, 0, 0, 0, 100, 0, 50, 0, 45, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anastasija Sevastova", "total": 380, "pts": [0, 0, 45, 0, 0, 25, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 45, 0, 0, 0, 20, 0, 100, 20, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0]}, {"name": "Barbora Záhlavová-Strýcová", "total": 350, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 55, 55, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 45, 0, 0, 0, 0, 0, 130, 0, 0, 25, 25, 0, 0, 0, 0]}, {"name": "Varvara Lepchenko", "total": 350, "pts": [0, 65, 0, 0, 0, 0, 0, 0, 0, 55, 20, 0, 0, 0, 25, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 65, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Alisa Kleybanova", "total": 345, "pts": [20, 45, 45, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 100, 50, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Tamarine Tanasugarn", "total": 320, "pts": [0, 0, 100, 0, 45, 0, 20, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tsevatana Pironkova", "total": 305, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 75, 25, 0, 20, 0, 0]}, {"name": "Stefanie Vögele", "total": 300, "pts": [0, 0, 0, 0, 0, 0, 15, 0, 25, 25, 20, 35, 0, 0, 0, 75, 0, 0, 20, 0, 0, 0, 45, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Monica Niculescu", "total": 295, "pts": [0, 0, 100, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 125, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Elena Baltacha", "total": 295, "pts": [0, 15, 0, 0, 0, 0, 0, 0, 25, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 115, 0, 0, 0, 80, 0, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Tathiana Garbin", "total": 295, "pts": [0, 0, 100, 0, 0, 50, 0, 0, 0, 30, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0]}, {"name": "Lucie Hradecká", "total": 275, "pts": [0, 0, 0, 0, 0, 0, 0, 20, 25, 55, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ayumi Morita", "total": 265, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 75, 0, 0, 0, 45, 0, 50, 0, 0, 0, 0, 0]}, {"name": "Laura Pous Tió", "total": 265, "pts": [0, 0, 0, 0, 0, 15, 35, 0, 0, 0, 15, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Gréta Arn", "total": 265, "pts": [20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 75, 0, 65, 0, 0, 0, 20, 20, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0]}, {"name": "Anne Keothavong", "total": 260, "pts": [0, 0, 0, 0, 0, 100, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 20, 0, 0]}, {"name": "Olga Savchuk", "total": 260, "pts": [0, 0, 45, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0]}, {"name": "Virginie Razzano", "total": 250, "pts": [0, 0, 0, 0, 45, 0, 0, 0, 30, 60, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 20, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sania Mirza", "total": 250, "pts": [0, 0, 100, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Heidi El Tabakh", "total": 245, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 75, 0, 20, 150, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sophie Ferguson", "total": 230, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 65, 0, 0, 0, 0, 0, 130, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ioana Raluca Olaru", "total": 225, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 30, 30, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 20, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maria Elena Camerin", "total": 225, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 50, 0, 0, 45, 0, 0, 0, 0, 0, 0, 45, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Coco Vandeweghe", "total": 225, "pts": [0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0]}, {"name": "Olivia Sanchez", "total": 220, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 180, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sharon Fichman", "total": 220, "pts": [0, 0, 20, 0, 0, 20, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Urszula Radwańska", "total": 215, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 0, 115, 0, 0, 0, 0, 0, 0]}, {"name": "Yung-jan Chan", "total": 215, "pts": [0, 0, 20, 0, 45, 25, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 30, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Chang Kai-chen", "total": 205, "pts": [0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 20, 10, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 20, 0, 25, 0, 20, 0, 0, 0]}, {"name": "Renata Voráčová", "total": 205, "pts": [0, 0, 0, 0, 0, 35, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0]}, {"name": "Kristina Mladenovic", "total": 195, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Vesna Manasieva", "total": 190, "pts": [0, 0, 0, 0, 20, 75, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Michelle Larcher de Brito", "total": 190, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 55, 85, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Silviá Soler Espinosa", "total": 185, "pts": [0, 0, 75, 0, 0, 20, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Bethanie Mattek-Sands", "total": 185, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 20, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Arantxa Rus", "total": 185, "pts": [35, 0, 45, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna-Lena Grönefeld", "total": 180, "pts": [0, 20, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 20, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Karolina Šprem", "total": 180, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 20, 0, 20, 20, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ksenia Pervak", "total": 180, "pts": [15, 0, 0, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 15, 0, 0, 0, 0, 0, 0, 45, 15, 0, 0, 0, 20, 0, 0]}, {"name": "Sabine Lisicki", "total": 175, "pts": [0, 20, 0, 0, 20, 0, 0, 0, 30, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Tatishvili", "total": 175, "pts": [0, 0, 75, 0, 0, 0, 0, 15, 0, 0, 15, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maša Zec Peškirič", "total": 170, "pts": [0, 0, 30, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 45, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tatjana Malek", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 50, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sesil Karatantcheva", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0]}, {"name": "Yvonne Meusburger", "total": 165, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 60, 0, 35, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Akgul Amanmuradova", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 20, 25, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 25, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Jamie Hampton", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 50, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Zuzana Ondrášková", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 20, 35, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lilia Osterloh", "total": 165, "pts": [0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 30, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Christina McHale", "total": 165, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 50, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0]}, {"name": "Kristina Barrois", "total": 165, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 30, 0, 0, 20, 0, 0, 0, 0, 20, 45, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0]}, {"name": "Vera Dushevina", "total": 160, "pts": [0, 0, 0, 0, 20, 0, 0, 0, 30, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0]}, {"name": "Stéphanie Foretz Gacon", "total": 160, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Beatriz García Vidagany", "total": 160, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 125, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Andreja Klepač", "total": 160, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 120, 0, 0, 0, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Marina Erakovic", "total": 160, "pts": [0, 0, 100, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Viktoriya Kutuzova", "total": 155, "pts": [0, 0, 30, 0, 0, 0, 0, 0, 125, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Jelena Dokić", "total": 150, "pts": [0, 60, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Melinda Czink", "total": 150, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 30, 30, 20, 0, 0, 0, 20, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Stéphanie Dubois", "total": 150, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 130, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yan Zi", "total": 150, "pts": [0, 0, 0, 0, 0, 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mariya Koryttseva", "total": 150, "pts": [0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0]}, {"name": "Petra Martić", "total": 145, "pts": [0, 0, 0, 0, 45, 0, 0, 0, 0, 30, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Corinna Dentoni", "total": 145, "pts": [0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Nuria Llagostera Vives", "total": 140, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 20, 20, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anastasiya Yakimova", "total": 140, "pts": [0, 0, 45, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ekaterina Bychkova", "total": 140, "pts": [0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0]}, {"name": "Zhang Shuai", "total": 140, "pts": [0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 50, 0, 0, 0, 0]}, {"name": "Johanna Larsson", "total": 135, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 35, 35, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Chanelle Scheepers", "total": 125, "pts": [0, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Noppawan Lertcheewakarn", "total": 125, "pts": [35, 0, 0, 0, 20, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Han Xinyun", "total": 120, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kathrin Wörle", "total": 115, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0]}, {"name": "Carly Gullickson", "total": 110, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 20, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Patricia Mayr", "total": 110, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mathilde Johansson", "total": 110, "pts": [0, 0, 0, 0, 0, 20, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mariana Duque Mariño", "total": 110, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 20, 0, 0, 0, 0, 35, 0, 20, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Elena Bovina", "total": 110, "pts": [0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 35, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0]}, {"name": "Katie O'Brien", "total": 110, "pts": [35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 20, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Alison Riske", "total": 105, "pts": [35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Alicia Molik", "total": 100, "pts": [0, 0, 0, 0, 0, 25, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Michaëlla Krajicek", "total": 100, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 20, 0, 0, 0, 0, 0, 30, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Zarina Diyas", "total": 100, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 65, 0, 0]}, {"name": "Marta Domachowska", "total": 95, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tamira Paszek", "total": 95, "pts": [0, 15, 0, 0, 20, 0, 0, 0, 0, 25, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Edina Gallovits-Hall", "total": 95, "pts": [0, 0, 0, 0, 0, 0, 45, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yuliana Fedak", "total": 95, "pts": [0, 0, 75, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lu Jingjing", "total": 95, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 75, 0, 0, 0, 0]}, {"name": "Anna Lapushchenkova", "total": 90, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 35, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mirjana Lučić", "total": 85, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 15, 0, 20, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anastasia Pivovarova", "total": 85, "pts": [15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Regina Kulikova", "total": 80, "pts": [0, 0, 30, 0, 0, 25, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Olivia Rogowska", "total": 80, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Laura Robson", "total": 80, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 20, 0, 0, 0]}, {"name": "Catalina Castaño", "total": 75, "pts": [0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Stéphanie Cohen-Aloro", "total": 75, "pts": [0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Monique Adamczak", "total": 75, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Zuzana Kučová", "total": 75, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 20, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Misaki Doi", "total": 75, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Alexandra Panova", "total": 75, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0]}, {"name": "Mandy Minella", "total": 75, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 45, 0, 0]}, {"name": "Heather Watson", "total": 75, "pts": [15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Casey Dellacqua", "total": 70, "pts": [0, 0, 45, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nina Bratchikova", "total": 70, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 20, 0, 0, 0, 0, 0, 0]}, {"name": "Ekaterina Ivanova", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0]}, {"name": "Alexa Glatch", "total": 65, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Darya Kustova", "total": 65, "pts": [0, 0, 20, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tatiana Poutchek", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Selima Sfar", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ajla Tomljanović", "total": 65, "pts": [0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kurumi Nara", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Arina Rodionova", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 45, 0, 0, 0, 0, 0, 0]}, {"name": "Eleni Daniilidou", "total": 65, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0]}, {"name": "Khrystyna Antoniichuk", "total": 60, "pts": [0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ashley Harkleroad", "total": 60, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Junri Namigata", "total": 60, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 15, 0, 0, 0]}, {"name": "Julia Schruff", "total": 55, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ekaterina Dzehalevich", "total": 50, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kristýna Plíšková", "total": 50, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Shelby Rogers", "total": 50, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sally Peers", "total": 50, "pts": [20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Galina Voskoboeva", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lesia Tsurenko", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Valérie Tétreault", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Séverine Brémond Beltrame", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Claire Feuerstein", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Hilary Barte", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Katarzyna Piter", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Irina Falconi", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 15, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Aiko Nakamura", "total": 45, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 45, 0, 0, 0]}, {"name": "Lourdes Domínguez Lino", "total": 40, "pts": [0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Julie Ditty", "total": 40, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nudnida Luangnam", "total": 35, "pts": [0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Floris", "total": 35, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Laura Siegemund", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Eva Hrdinová", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Liana Ungar", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lenka Tvarošková", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nadeja Guskova", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0]}, {"name": "Romina Oprandi", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0]}, {"name": "Mona Barthel", "total": 35, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 0, 0]}, {"name": "Sacha Jones", "total": 35, "pts": [20, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Vitalia Diatchenko", "total": 30, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kristína Kučová", "total": 30, "pts": [0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Zhang Ling", "total": 30, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Melanie South", "total": 30, "pts": [0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Gerasimou", "total": 30, "pts": [0, 0, 0, 0, 15, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Dia Evtimova", "total": 30, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lisa Whybourn", "total": 30, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Su-wei Hsieh", "total": 30, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0, 0, 0, 0, 0, 0]}, {"name": "Anne Kremer", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yurika Sema", "total": 20, "pts": [0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Rebecca Marino", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Irina-Camelia Begu", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Melanie Klaffner", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Suchanun Viratprasert", "total": 20, "pts": [0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mashona Washington", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lina Bennani", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maria João Koehler", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Oksana Kalashnikova", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Naomi Cavaday", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Başak Eraydın", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Xu Yifan", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ryoko Fuda", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Sachie Ishizu", "total": 20, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0]}, {"name": "Zhou Yimiao", "total": 15, "pts": [0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Claire de Gubernatis", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ana Vrljić", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Michaela Pochabová", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mervana Jugić-Salkić", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Martina Caregaro", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kim So-jung", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sun Shengnan", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ksenia Palkina", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0]}, {"name": "Eirini Georgatou", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0]}, {"name": "Tomoko Yonemura", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0]}, {"name": "Natalie Grandin", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0]}, {"name": "Ivana Lisjak", "total": 15, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0]}, {"name": "Margalita Chakhnashvili", "total": 10, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Naomi Broady", "total": 10, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Meghann Shaughnessy", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Stephanie Gehrlein", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lenka Wienerová", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Neuza Silva", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ksenia Lykina", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Chen Yanchong", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Madison Brengle", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lauren Albanese", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Angela Haynes", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Jorgelina Cravero", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Amra Sadiković", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Petra Cetkovská", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Gail Brodsky", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lenka Juríková", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sandra Klösel", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tereza Hladíková", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tadeja Majerič", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Carmen Klaschka", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nathalie Viérin", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Karolína Plíšková", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Katalin Marosi", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sandra Roma", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Irina Buryachok", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Michaela Johansson", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Youlia Fedossova", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Irena Pavlovic", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maret Ani", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yuliya Beygelzimer", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ágnes Szatmári", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Jasmin Wöhr", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Eva Fernández Brugués", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Paula Fondevila Castro", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yevgenia Savranska", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Abigail Spears", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Marie-Ève Pelletier", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "María Teresa Torró Flor", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Karin Knapp", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Betina Jozami", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tamaryn Hendler", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Oxana Lyubtsova", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nicha Lertpitaksinchai", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Yuan Meng", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Olga Puchkova", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Isabella Holland", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nigina Abduraimova", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Rika Fujiwara", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Lee Ye-ra", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Julia Vakulenko", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Ahsha Rolle", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Hana Šromová", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Mallory Cecil", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Cara Black", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Vasilisa Bardina", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Amanda Fink", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nika Ožegović", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Sanda Mamić", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Martina Müller", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Palma Kiraly", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Veronika Chvojková", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Kyra Nagy", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Teodora Mirčić", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Nataša Zorić", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Alexis Gordon", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maria Kondratieva", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Margit Ruutel", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Amanda Elliott", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Fitzpatrick", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Angelika Bachmann", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Jelena Pandžić", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Tatiana Golovin", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Alexandra Stevenson", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Chuang Chia-jung", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Orlik", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Emmanuelle Gagliardi", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "María Irigoyen", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Elena Likhovtseva", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Akiko Yonemura", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Maria Mokh", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Eva Birnerová", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anda Perianu", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Raquel Atawo", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Virginie Pichet", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "María José Argeri", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Anna Korzeniak", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Elise Tamaëla", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Teliana Pereira", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}, {"name": "Çağla Büyükakçay", "total": 0, "pts": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}];
+const SEED_CALENDAR = [{"week": 1, "date": "January 3", "name": "Brisbane International", "city": "Brisbane, Australia", "category": "250", "surface": "Hard", "drawSize": 32, "status": "completed", "result": {"champion": "Sara Errani", "runnerup": "Petra Kvitová", "sf": ["Vania King", "Shahar Pe'er"], "qf": ["Andrea Petkovic", "Dominika Cibulková", "Nadia Petrova", "Anastasia Rodionova"]}}, {"week": 1, "date": "January 3", "name": "ASB Classic", "city": "Auckland, New Zealand", "category": "250", "surface": "Hard", "drawSize": 32, "status": "completed", "result": {"champion": "Kateryna Bondarenko", "runnerup": "Alizé Cornet", "sf": ["Sofia Arvidsson", "Carla Suárez Navarro"], "qf": ["Svetlana Kuznetsova", "Julia Görges", "Elena Vesnina", "Simona Halep"]}}, {"week": 2, "date": "January 10", "name": "Medibank International", "city": "Sydney, Australia", "category": "500", "surface": "Hard", "drawSize": 30, "status": "current", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 2, "date": "January 10", "name": "Moorilla Hobart International", "city": "Hobart, Australia", "category": "250", "surface": "Hard", "drawSize": 32, "status": "current", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 3, "date": "January 17", "name": "Australian Open", "city": "Melbourne, Australia", "category": "GS", "surface": "Hard", "drawSize": 128, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 5, "date": "January 31", "name": "Bye Week", "city": "—", "category": "BYE", "surface": "—", "drawSize": 0, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 6, "date": "February 7", "name": "Open GDF Suez", "city": "Paris, France", "category": "500", "surface": "Hard (i)", "drawSize": 30, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 6, "date": "February 7", "name": "PTT Pattaya Open", "city": "Pattaya, Thailand", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 7, "date": "February 14", "name": "Dubai Duty Free Championships", "city": "Dubai, UAE", "category": "1000", "surface": "Hard", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 7, "date": "February 14", "name": "Cellular South Cup", "city": "Memphis, United States", "category": "250", "surface": "Hard (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 7, "date": "February 14", "name": "Copa BBVA-Colsanitas", "city": "Bogotá, Colombia", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 8, "date": "February 21", "name": "Qatar Ladies Open", "city": "Doha, Qatar", "category": "500", "surface": "Hard", "drawSize": 28, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 8, "date": "February 21", "name": "Abierto Mexicano Telcel", "city": "Acapulco, Mexico", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 9, "date": "February 28", "name": "Monterrey Open", "city": "Monterrey, Mexico", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 9, "date": "February 28", "name": "Malaysian Open", "city": "Kuala Lumpur, Malaysia", "category": "250", "surface": "Hard (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 10, "date": "March 7", "name": "BNP Paribas Open", "city": "Indian Wells, United States", "category": "1000", "surface": "Hard", "drawSize": 96, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 12, "date": "March 21", "name": "Sony Ericsson Open", "city": "Miami, United States", "category": "1000", "surface": "Hard", "drawSize": 96, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 14, "date": "April 4", "name": "Family Circle Cup", "city": "Charleston, United States", "category": "500", "surface": "Clay", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 14, "date": "April 4", "name": "Andalucia Tennis Experience", "city": "Marbella, Spain", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 16, "date": "April 18", "name": "Porsche Tennis Grand Prix", "city": "Stuttgart, Germany", "category": "500", "surface": "Clay (i)", "drawSize": 28, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 16, "date": "April 18", "name": "Grand Prix SAR La Princesse Lalla Meryem", "city": "Fes, Morocco", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 17, "date": "April 25", "name": "Barcelona Ladies Open", "city": "Barcelona, Spain", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 17, "date": "April 25", "name": "Estoril Open", "city": "Estoril, Portugal", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 18, "date": "May 2", "name": "Mutua Madrileña Madrid Open", "city": "Madrid, Spain", "category": "1000", "surface": "Clay", "drawSize": 64, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 19, "date": "May 9", "name": "Internazionali BNL d'Italia", "city": "Rome, Italy", "category": "1000", "surface": "Clay", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 20, "date": "May 16", "name": "Brussels Open by GDF Suez", "city": "Brussels, Belgium", "category": "500", "surface": "Clay", "drawSize": 30, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 20, "date": "May 16", "name": "Internationaux de Strasbourg", "city": "Strasbourg, France", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 21, "date": "May 23", "name": "French Open", "city": "Paris, France", "category": "GS", "surface": "Clay", "drawSize": 128, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 23, "date": "June 6", "name": "Aegon Classic", "city": "Birmingham, United Kingdom", "category": "250", "surface": "Grass", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 23, "date": "June 6", "name": "e-Boks Sony Ericsson Open", "city": "Copenhagen, Denmark", "category": "250", "surface": "Hard (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 24, "date": "June 13", "name": "Aegon International", "city": "Eastbourne, Great Britain", "category": "500", "surface": "Grass", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 24, "date": "June 13", "name": "UNICEF Open", "city": "'s-Hertogenbosch, Netherlands", "category": "250", "surface": "Grass", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 25, "date": "June 20", "name": "Wimbledon Championships", "city": "London, United Kingdom", "category": "GS", "surface": "Grass", "drawSize": 128, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 27, "date": "July 4", "name": "Budapest Grand Prix", "city": "Budapest, Hungary", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 27, "date": "July 4", "name": "Swedish Open Women", "city": "Båstad, Sweden", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 28, "date": "July 11", "name": "Internazionali Femminili di Palermo", "city": "Palermo, Italy", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 28, "date": "July 11", "name": "Gastein Ladies Open", "city": "Bad Gastein, Austria", "category": "250", "surface": "Clay", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 29, "date": "July 18", "name": "Baku Cup", "city": "Baku, Azerbaijan", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 30, "date": "July 25", "name": "Bank of the West Classic", "city": "Stanford, United States", "category": "500", "surface": "Hard", "drawSize": 28, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 30, "date": "July 25", "name": "Citi Open", "city": "Washington, D.C., United States", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 31, "date": "August 1", "name": "Mercury Insurance Open", "city": "San Diego, United States", "category": "500", "surface": "Hard", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 32, "date": "August 8", "name": "Rogers Cup", "city": "Toronto, Canada", "category": "1000", "surface": "Hard", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 33, "date": "August 15", "name": "Western & Southern Open", "city": "Cincinnati, United States", "category": "1000", "surface": "Hard", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 34, "date": "August 22", "name": "New Haven Open", "city": "New Haven, United States", "category": "500", "surface": "Hard", "drawSize": 28, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 34, "date": "August 22", "name": "Texas Tennis Open", "city": "Dallas, United States", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 35, "date": "August 29", "name": "US Open", "city": "New York, United States", "category": "GS", "surface": "Hard", "drawSize": 128, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 37, "date": "September 12", "name": "Tashkent Open", "city": "Tashkent, Uzbekistan", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 37, "date": "September 12", "name": "Bell Challenge", "city": "Quebec City, Canada", "category": "250", "surface": "Carpet (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 38, "date": "September 19", "name": "Korea Open", "city": "Seoul, South Korea", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 38, "date": "September 19", "name": "Guangzhou International Women's Open", "city": "Guangzhou, China", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 39, "date": "September 26", "name": "Toray Pan Pacific Open", "city": "Tokyo, Japan", "category": "1000", "surface": "Hard", "drawSize": 56, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 40, "date": "October 3", "name": "China Open", "city": "Beijing, China", "category": "1000", "surface": "Hard", "drawSize": 60, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 41, "date": "October 10", "name": "Generali Ladies Linz", "city": "Linz, Austria", "category": "250", "surface": "Hard (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 41, "date": "October 10", "name": "HP Open", "city": "Osaka, Japan", "category": "250", "surface": "Hard", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 42, "date": "October 17", "name": "Kremlin Cup", "city": "Moscow, Russia", "category": "500", "surface": "Hard (i)", "drawSize": 30, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 42, "date": "October 17", "name": "BGL Luxembourg Open", "city": "Kockelscheuer, Luxembourg", "category": "250", "surface": "Hard (i)", "drawSize": 32, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}, {"week": 44, "date": "October 31", "name": "WTA Finals", "city": "Istanbul, Turkey", "category": "FINALS", "surface": "Hard (i)", "drawSize": 8, "status": "upcoming", "result": {"champion": "", "runnerup": "", "sf": [], "qf": []}}];
+
+const COUNTRY_MAP = {"Caroline Wozniacki": "DK", "Kim Clijsters": "BE", "Vera Zvonareva": "RU", "Petra Kvitová": "CZ", "Victoria Azarenka": "BY", "Maria Sharapova": "RU", "Francesca Schiavone": "IT", "Li Na": "CN", "Samantha Stosur": "AU", "Marion Bartoli": "FR", "Jelena Janković": "RS", "Andrea Petkovic": "DE", "Agnieszka Radwańska": "PL", "Svetlana Kuznetsova": "RU", "Ana Ivanovic": "RS", "Shahar Pe'er": "IL", "Daniela Hantuchová": "SK", "Dominika Cibulková": "SK", "Yanina Wickmayer": "BE", "Flavia Pennetta": "IT", "Julia Görges": "DE", "Nadia Petrova": "RU", "Elena Vesnina": "RU", "Anastasia Pavlyuchenkova": "RU", "Alisa Kleybanova": "RU", "Sabine Lisicki": "DE", "Roberta Vinci": "IT", "Maria Kirilenko": "RU", "Zheng Jie": "CN", "Bethanie Mattek-Sands": "US", "Alberta Brianti": "IT", "Kaia Kanepi": "EE", "Iveta Benešová": "CZ", "Alona Bondarenko": "UA", "Kateryna Bondarenko": "UA", "Sara Errani": "IT", "Petra Cetkovská": "CZ", "Klára Zakopalová": "CZ", "Peng Shuai": "CN", "Venus Williams": "US", "Serena Williams": "US", "Vania King": "US", "Christina McHale": "US", "Melanie Oudin": "US", "Varvara Lepchenko": "US", "Sloane Stephens": "US", "Jamie Hampton": "US", "Alexandra Dulgheru": "RO", "Sorana Cîrstea": "RO", "Simona Halep": "RO", "Monica Niculescu": "RO", "Irina-Camelia Begu": "RO", "Anastasia Rodionova": "AU", "Jarmila Gajdošová": "AU", "Casey Dellacqua": "AU", "Anabel Medina Garrigues": "ES", "Carla Suárez Navarro": "ES", "María José Martínez Sánchez": "ES", "Arantxa Parra Santonja": "ES", "Lourdes Domínguez Lino": "ES", "Alizé Cornet": "FR", "Aravane Rezaï": "FR", "Virginie Razzano": "FR", "Pauline Parmentier": "FR", "Kristina Mladenovic": "FR", "Stefanie Vögele": "CH", "Patty Schnyder": "CH", "Barbora Záhlavová-Strýcová": "CZ", "Lucie Šafářová": "CZ", "Ekaterina Makarova": "RU", "Vera Dushevina": "RU", "Galina Voskoboeva": "KZ", "Yaroslava Shvedova": "KZ", "Sesil Karatantcheva": "BG", "Angelique Kerber": "DE", "Mona Barthel": "DE", "Anna-Lena Grönefeld": "DE", "Kristina Barrois": "DE", "Tatjana Malek": "DE", "Gisela Dulko": "AR", "Paula Ormaechea": "AR", "Renata Voráčová": "CZ", "Eva Birnerová": "CZ", "Sofia Arvidsson": "SE", "Johanna Larsson": "SE", "Michaëlla Krajicek": "NL", "Arantxa Rus": "NL", "Chan Yung-Jan": "TW", "Hsieh Su-Wei": "TW", "Kimiko Date-Krumm": "JP", "Ayumi Morita": "JP", "Misaki Doi": "JP", "Akgul Amanmuradova": "UZ", "Marina Erakovic": "NZ", "Elena Baltacha": "GB", "Heather Watson": "GB", "Laura Robson": "GB", "Anne Keothavong": "GB", "Melinda Czink": "HU", "Gréta Arn": "HU", "Ivana Lisjak": "HR", "Polona Hercog": "SI", "Magdaléna Rybáriková": "SK", "Jana Cepelová": "SK", "Anastasija Sevastova": "LV", "Alona Fomina": "UA", "Olga Savchuk": "UA", "Julia Vakulenko": "UA", "Ekaterina Bychkova": "RU", "Nina Bratchikova": "RU", "Bojana Jovanovski": "RS", "Vesna Dolonc": "RS", "Aleksandra Krunić": "RS", "Karin Knapp": "IT", "Romina Oprandi": "CH", "Amra Sadiković": "CH", "Cristina Dinu": "RO", "Edina Gallovits-Hall": "RO", "Nastassja Burnett": "IT", "Reka-Luca Jani": "HU", "Tímea Babos": "HU", "Zhang Shuai": "CN", "Han Xinyun": "CN", "Sun Shengnan": "CN", "Vera Lapko": "BY", "Olga Govortsova": "BY", "Ksenia Milevskaya": "BY", "Tatiana Poutchek": "BY", "Sharon Fichman": "CA", "Aleksandra Wozniak": "CA", "Rebecca Marino": "CA", "Chanelle Scheepers": "ZA", "Natalie Grandin": "ZA", "Andrea Hlaváčková": "CZ", "Lucie Hradecká": "CZ", "Michaela Hončová": "CZ", "Sofia Shapatava": "GE", "Oksana Kalashnikova": "GE", "Tadeja Majerič": "SI", "Nastja Kolar": "SI", "Karolína Plíšková": "CZ", "Kristýna Plíšková": "CZ", "Coco Vandeweghe": "US", "Silviá Soler Espinosa": "ES", "Timea Bacszinsky": "CH", "Tsevatana Pironkova": "BG", "Petra Martić": "HR", "Mirjana Lučić": "HR", "Andreja Klepač": "SI", "Maria Elena Camerin": "IT", "Chang Kai-chen": "TW", "Stéphanie Dubois": "CA", "Kristína Kučová": "SK", "Anastasiya Yakimova": "BY"};
+const COUNTRY_NAMES = {"AR": "Argentina", "AT": "Austria", "AU": "Australia", "BE": "Belgium", "BG": "Bulgaria", "BR": "Brazil", "BY": "Belarus", "CA": "Canada", "CH": "Switzerland", "CL": "Chile", "CN": "China", "CO": "Colombia", "CZ": "Czech Republic", "DE": "Germany", "DK": "Denmark", "EE": "Estonia", "ES": "Spain", "FR": "France", "GB": "Great Britain", "GE": "Georgia", "GR": "Greece", "HR": "Croatia", "HU": "Hungary", "ID": "Indonesia", "IL": "Israel", "IN": "India", "IT": "Italy", "JP": "Japan", "KR": "South Korea", "KZ": "Kazakhstan", "LT": "Lithuania", "LU": "Luxembourg", "LV": "Latvia", "MA": "Morocco", "MX": "Mexico", "NL": "Netherlands", "NO": "Norway", "NZ": "New Zealand", "PL": "Poland", "PR": "Puerto Rico", "PT": "Portugal", "RO": "Romania", "RS": "Serbia", "RU": "Russia", "SE": "Sweden", "SI": "Slovenia", "SK": "Slovakia", "TH": "Thailand", "TW": "Chinese Taipei", "TR": "Turkey", "UA": "Ukraine", "US": "United States", "UY": "Uruguay", "UZ": "Uzbekistan", "VE": "Venezuela", "ZA": "South Africa"};
+
+
+function flagEmoji(code){
+  if(!code || code.length!==2) return '';
+  return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+}
+function playerFlag(name){
+  const p = findPlayer(name);
+  const code = p ? p.country : (COUNTRY_MAP[name]||'');
+  return code ? `<span class="flag">${flagEmoji(code)}</span>` : '';
+}
+function countryOptions(selected){
+  const codes = Object.keys(COUNTRY_NAMES).sort((a,b)=>COUNTRY_NAMES[a].localeCompare(COUNTRY_NAMES[b]));
+  let opts = `<option value="" ${!selected?'selected':''}>\u2014 unset \u2014</option>`;
+  codes.forEach(c=>{
+    opts += `<option value="${c}" ${selected===c?'selected':''}>${flagEmoji(c)} ${COUNTRY_NAMES[c]}</option>`;
+  });
+  return opts;
+}
+function updateCountry(name, code){
+  ensurePlayer(name).country = code;
+  saveState();
+  fillRankingsTable(document.getElementById('rankSearch') ? document.getElementById('rankSearch').value : '');
+}
+
+const DEFAULT_TEMPLATES = {
+  "GS":        {label:"Grand Slam (128)",        W:2000,F:1200,SF:720,QF:360,R16:180,R32:100,R64:45,R128:0, Q:30,Q1:20},
+  "P1000_BIG": {label:"Premier 1000 (96)",        W:1000,F:600, SF:360,QF:180,R16:100,R32:60, R64:30,R128:0, Q:25,Q1:20},
+  "P1000_SML": {label:"Premier 1000 (56\u201364)", W:1000,F:600, SF:360,QF:180,R16:100,R32:50, R64:0, R128:null,Q:25,Q1:20},
+  "T500_BIG":  {label:"WTA 500 (\u226530 draw)",   W:500, F:300, SF:180,QF:100,R16:45, R32:20, R64:0, R128:null,Q:20,Q1:10},
+  "T500_SML":  {label:"WTA 500 (28 draw)",        W:500, F:300, SF:180,QF:100,R16:45, R32:0,  R64:null,R128:null,Q:20,Q1:10},
+  "T250_BIG":  {label:"WTA 250 (32 draw)",        W:250, F:150, SF:100,QF:45, R16:20, R32:10, R64:0, R128:null,Q:15,Q1:10},
+  "T250_SML":  {label:"WTA 250 (28 draw)",        W:250, F:150, SF:100,QF:45, R16:20, R32:0,  R64:null,R128:null,Q:15,Q1:10},
+  "CHAL":      {label:"WTA Challenger",           W:125, F:75,  SF:45, QF:25, R16:10, R32:0,  R64:null,R128:null,Q:5, Q1:0},
+  "FINALS":    {label:"WTA Finals (round robin)", RR0:150,RR1:300,RR2:450,RR3:600, SF:0, F:350, W:500}
+};
+
+function suggestTemplateKey(category, drawSize){
+  if(category==="GS") return "GS";
+  if(category==="FINALS") return "FINALS";
+  if(category==="1000") return drawSize>=80 ? "P1000_BIG" : "P1000_SML";
+  if(category==="500") return drawSize>=29 ? "T500_BIG" : "T500_SML";
+  if(category==="250") return drawSize>=29 ? "T250_BIG" : "T250_SML";
+  return "CHAL";
+}
+
+let STATE = null;
+
+function weeksOrder(calendar){
+  const order=[];
+  calendar.forEach(e=>{ if(!order.includes(e.week)) order.push(e.week); });
+  return order;
+}
+
+function defaultState(){
+  const calendar = SEED_CALENDAR.map(e=>({...e}));
+  const order = weeksOrder(calendar);
+  const curEvt = calendar.find(e=>e.status==="current");
+  const curWeekVal = curEvt ? curEvt.week : order[0];
+  return {
+    weekLabels: WEEK_LABELS,
+    players: SEED_PLAYERS.map(p=>({...p, pts:[...p.pts], country: COUNTRY_MAP[p.name] || ''})),
+    calendar,
+    currentWeekIdx: order.indexOf(curWeekVal),
+    activeDraws: {},
+    templates: JSON.parse(JSON.stringify(DEFAULT_TEMPLATES))
+  };
+}
+
+async function loadState(){
+  try{
+    const res = await window.storage.get('wta-tour-state-v2', false);
+    if(res && res.value){ STATE = JSON.parse(res.value); return; }
+  }catch(e){}
+  STATE = defaultState();
+  await saveState();
+}
+async function saveState(){
+  try{ await window.storage.set('wta-tour-state-v2', JSON.stringify(STATE), false); }
+  catch(e){ console.error('save failed', e); }
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._h);
+  toast._h=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+document.querySelectorAll('nav.tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('section.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('panel-'+b.dataset.tab).classList.add('active');
+  });
+});
+
+function findPlayer(name){
+  name=(name||'').trim();
+  if(!name) return null;
+  return STATE.players.find(p=>p.name.toLowerCase()===name.toLowerCase());
+}
+function ensurePlayer(name){
+  let p = findPlayer(name);
+  if(!p){
+    p = {name:name.trim(), total:0, pts: STATE.weekLabels.map(()=>0), country: COUNTRY_MAP[name.trim()] || ''};
+    STATE.players.push(p);
+  }
+  return p;
+}
+function catLabel(c){
+  return {GS:"Grand Slam", "1000":"Premier 1000","500":"WTA 500","250":"WTA 250",FINALS:"WTA Finals",BYE:"Bye Week"}[c] || c;
+}
+function currentWeekVal(){
+  const order = weeksOrder(STATE.calendar);
+  return order[STATE.currentWeekIdx];
+}
+function currentWeekEvents(){
+  const wv = currentWeekVal();
+  return STATE.calendar.map((e,i)=>({e,i})).filter(x=>x.e.week===wv);
+}
+function weekLabelToSlotIndex(week){
+  const idx = STATE.weekLabels.findIndex(l=>{
+    if(l===week) return true;
+    if(typeof l==='string' && l.includes('/')){
+      return l.split('/').map(x=>parseInt(x)).includes(parseInt(week));
+    }
+    return false;
+  });
+  return idx>=0?idx:0;
+}
+
+function renderSeason(){
+  const el = document.getElementById('panel-season');
+  let html = '<div class="card"><h2>2011 Season</h2><p class="muted">Weeks post in order. A week can hold more than one tournament — finish every event in the highlighted week to unlock the next.</p></div>';
+  let lastMonth = null;
+  const wv = currentWeekVal();
+  let curWeekOpen = false;
+  STATE.calendar.forEach((ev, idx)=>{
+    const month = ev.date.split(' ')[0];
+    if(month!==lastMonth){
+      if(curWeekOpen){ html += '</div>'; curWeekOpen=false; }
+      html += `<div class="month-label">${month}</div>`; lastMonth=month;
+    }
+    const isCurWeek = ev.week===wv;
+    const prevWv = idx>0 ? STATE.calendar[idx-1].week : null;
+    if(ev.week!==prevWv){
+      if(curWeekOpen){ html += '</div>'; }
+      html += `<div class="week-block ${isCurWeek?'current-week':''}">`;
+      curWeekOpen = true;
+    }
+    let resultText = '';
+    if(ev.status==='completed' && ev.result && ev.result.champion){
+      resultText = `\ud83c\udfc6 ${ev.result.champion} d. ${ev.result.runnerup}`;
+    } else if(ev.category==='BYE'){
+      resultText = 'No tour event';
+    }
+    const catBadge = ev.category==='BYE' ? '' : `<span class="ev-cat">${catLabel(ev.category)}${ev.drawSize?(' \u00b7 S'+ev.drawSize):''}</span>`;
+    html += `<div class="event-row ${ev.status}">
+      <div class="status-dot ${ev.status}"></div>
+      <div class="ev-week">Wk ${ev.week}</div>
+      <div class="ev-name">${ev.name}</div>
+      <div class="ev-city">${ev.city}</div>
+      ${catBadge}
+      <div class="ev-result">${resultText}</div>
+    </div>`;
+  });
+  if(curWeekOpen) html += '</div>';
+  if(wv!=null){
+    html += `<button class="btn" onclick="document.querySelector('nav.tabs button[data-tab=draw]').click()">Go to This Week</button>`;
+  }
+  el.innerHTML = html;
+}
+
+async function skipByeWeek(){
+  currentWeekEvents().forEach(({e})=>{ e.status='completed'; });
+  advanceWeekIfDone();
+  await saveState();
+  renderAll();
+  toast('Moved past bye week.');
+}
+
+function advanceWeekIfDone(){
+  const events = currentWeekEvents().map(x=>x.e);
+  const pending = events.filter(e=>e.category!=='BYE' && e.status!=='completed');
+  if(pending.length>0) return false;
+  const order = weeksOrder(STATE.calendar);
+  let n = STATE.currentWeekIdx+1;
+  if(n < order.length){
+    STATE.currentWeekIdx = n;
+    const nv = order[n];
+    STATE.calendar.forEach(e=>{ if(e.week===nv) e.status='current'; });
+  } else {
+    STATE.currentWeekIdx = order.length;
+  }
+  return true;
+}
+
+function nextPow2(n){let p=1;while(p<n)p*=2;return p;}
+function seedOrder(n){
+  let seeds=[1,2];
+  while(seeds.length<n){
+    const s2=seeds.length*2;
+    const ns=[];
+    for(const s of seeds){ ns.push(s); ns.push(s2+1-s); }
+    seeds=ns;
+  }
+  return seeds;
+}
+function roundLabels(numRounds){
+  const namesFromFinal = ['Final','Semifinal','Quarterfinal','Round of 16','Round of 32','Round of 64','Round of 128'];
+  const labels=[];
+  for(let i=0;i<numRounds;i++){
+    const distFromFinal = numRounds-1-i;
+    labels.push(namesFromFinal[distFromFinal] || ('Round '+(i+1)));
+  }
+  return labels;
+}
+const ROUND_KEY_FROM_FINAL = ['F','SF','QF','R16','R32','R64','R128'];
+
+function renderDraw(){
+  const el = document.getElementById('panel-draw');
+  const wv = currentWeekVal();
+  if(wv==null){
+    el.innerHTML = '<div class="empty-state"><h2>Season complete \ud83c\udfc6</h2><p>Every 2011 event has been played out. Check the Rankings tab for the final standings.</p></div>';
+    return;
+  }
+  const events = currentWeekEvents();
+  const realEvents = events.filter(x=>x.e.category!=='BYE');
+
+  if(realEvents.length===0){
+    el.innerHTML = `<div class="card"><h2>Week ${wv} — Bye Week</h2><p class="muted">No tour events scheduled this week.</p>
+      <button class="btn" onclick="skipByeWeek()">Skip to Next Week</button></div>`;
+    return;
+  }
+
+  let html = `<p class="muted" style="margin-bottom:12px">Complete every draw below to unlock next week.</p>`;
+  realEvents.forEach(({e,i})=>{
+    html += `<div id="tourn-${i}"></div>`;
+  });
+  el.innerHTML = html;
+  realEvents.forEach(({e,i})=> renderTournamentCard(i));
+}
+
+function renderTournamentCard(idx){
+  const host = document.getElementById('tourn-'+idx);
+  if(!host) return;
+  const ev = STATE.calendar[idx];
+  if(ev.status==='completed'){
+    host.innerHTML = `<div class="card">
+      <div class="tourn-card-header"><h2 style="margin:0">${ev.name} — ${ev.city}</h2><span class="done-badge">Completed</span></div>
+      <p class="muted">${catLabel(ev.category)} \u00b7 ${ev.surface}</p>
+      <p>\ud83c\udfc6 <b>${ev.result.champion}</b> d. ${ev.result.runnerup}</p>
+    </div>`;
+    return;
+  }
+  const draw = STATE.activeDraws[idx];
+  if(!draw){
+    renderDrawSetup(host, ev, idx);
+  } else if(ev.category==='FINALS'){
+    renderFinalsRR(host, ev, idx);
+  } else {
+    renderBracket(host, ev, idx);
+  }
+}
+
+function renderDrawSetup(host, ev, idx){
+  const suggested = suggestTemplateKey(ev.category, ev.drawSize);
+  const tplOptions = Object.entries(STATE.templates).map(([k,v])=>
+    `<option value="${k}" ${k===suggested?'selected':''}>${v.label}</option>`).join('');
+
+  if(ev.category==='FINALS'){
+    host.innerHTML = `<div class="card">
+      <h2>${ev.name} — ${ev.city}</h2>
+      <p class="muted">Round-robin finale: 8 players. Enter each player's name below, then start.</p>
+      <div class="field"><label>Points template</label><select id="tplSelect-${idx}">${tplOptions}</select></div>
+      <div id="finalsEntrants-${idx}"></div>
+      <button class="btn" onclick="startFinals(${idx})">Start Round Robin</button>
+    </div>`;
+    const c = document.getElementById('finalsEntrants-'+idx);
+    const sorted = [...STATE.players].sort((a,b)=>b.total-a.total);
+    for(let i=1;i<=8;i++){
+      const row=document.createElement('div');
+      row.className='seed-entry';
+      const suggestion = sorted[i-1]?sorted[i-1].name:'';
+      row.innerHTML = `<div class="snum">${i}</div><input type="text" list="playerList" value="${suggestion}" id="finalist${idx}-${i}">`;
+      c.appendChild(row);
+    }
+    addPlayerDatalist();
+    return;
+  }
+
+  const drawDefault = ev.drawSize;
+  const byesDefault = nextPow2(drawDefault) - drawDefault;
+  const baseSeeds = drawDefault>=64 ? 16 : 8;
+  const seedsDefault = Math.max(baseSeeds, byesDefault);
+  host.innerHTML = `<div class="card">
+    <h2>${ev.name} — ${ev.city}</h2>
+    <p class="muted">${catLabel(ev.category)} \u00b7 ${ev.surface} \u00b7 ${ev.drawSize}-player draw</p>
+    <div class="grid3">
+      <div class="field"><label>Draw size</label><input type="number" id="drawSizeInput-${idx}" value="${drawDefault}" min="4" max="128"></div>
+      <div class="field"><label>Number of seeds</label><input type="number" id="numSeedsInput-${idx}" value="${seedsDefault}" min="0" max="32"></div>
+      <div class="field"><label>Points template</label><select id="tplSelect-${idx}">${tplOptions}</select></div>
+    </div>
+    <div id="seedEntrants-${idx}"></div>
+    <button class="btn secondary small" onclick="rebuildSeedInputs(${idx})">Update seed slots</button>
+    <div style="height:10px"></div>
+    <button class="btn" onclick="generateDraw(${idx})">Generate Draw</button>
+    <div class="helptext">Top players from the current rankings are pre-filled as suggested seeds — edit freely. Unseeded slots (wildcards, qualifiers, alternates) are filled in on the bracket itself after it's generated. Keep the seed count at or above the number of first-round byes (${byesDefault} here) so every bye lands on a seeded player.</div>
+  </div>`;
+  rebuildSeedInputs(idx);
+  addPlayerDatalist();
+}
+
+function rebuildSeedInputs(idx){
+  const n = parseInt(document.getElementById('numSeedsInput-'+idx).value)||0;
+  const c = document.getElementById('seedEntrants-'+idx);
+  c.innerHTML='';
+  const sorted = [...STATE.players].sort((a,b)=>b.total-a.total);
+  for(let i=1;i<=n;i++){
+    const suggestion = sorted[i-1] ? sorted[i-1].name : '';
+    const row=document.createElement('div');
+    row.className='seed-entry';
+    row.innerHTML = `<div class="snum">${i}</div><input type="text" list="playerList" value="${suggestion}" id="seed${idx}-${i}">`;
+    c.appendChild(row);
+  }
+}
+
+function addPlayerDatalist(){
+  let dl = document.getElementById('playerList');
+  if(!dl){
+    dl = document.createElement('datalist');
+    dl.id='playerList';
+    document.body.appendChild(dl);
+  }
+  dl.innerHTML = STATE.players.map(p=>`<option value="${p.name.replace(/"/g,'&quot;')}">`).join('');
+}
+
+function generateDraw(idx){
+  const ev = STATE.calendar[idx];
+  const drawSize = parseInt(document.getElementById('drawSizeInput-'+idx).value);
+  const numSeeds = parseInt(document.getElementById('numSeedsInput-'+idx).value);
+  const tplKey = document.getElementById('tplSelect-'+idx).value;
+  const slots = nextPow2(drawSize);
+  const byes = slots - drawSize;
+  const order = seedOrder(slots);
+
+  const seedNames = [];
+  for(let i=1;i<=numSeeds;i++){
+    seedNames.push(document.getElementById('seed'+idx+'-'+i).value.trim());
+  }
+
+  const positions = new Array(slots).fill(null);
+  for(let r=1;r<=numSeeds;r++){
+    const pos = order.indexOf(r);
+    if(pos>=0) positions[pos] = {name: seedNames[r-1] || ('Seed '+r), seed:r, isBye:false};
+  }
+  const byeRanks = new Set();
+  for(let r=1;r<=byes;r++) byeRanks.add(r);
+  for(let i=0;i<slots;i+=2){
+    const a=positions[i], b=positions[i+1];
+    if(a && byeRanks.has(a.seed) && !b){ positions[i+1] = {name:'BYE', seed:null, isBye:true}; }
+    if(b && byeRanks.has(b.seed) && !a){ positions[i] = {name:'BYE', seed:null, isBye:true}; }
+  }
+  for(let i=0;i<slots;i++){
+    if(!positions[i]) positions[i] = {name:'', seed:null, isBye:false};
+  }
+
+  const numRounds = Math.log2(slots);
+  const labels = roundLabels(numRounds);
+
+  const rounds = [];
+  let current = positions;
+  for(let rIdx=0; rIdx<numRounds; rIdx++){
+    const matches=[];
+    for(let i=0;i<current.length;i+=2){
+      matches.push({p1:current[i], p2:current[i+1], winner:null, sets:[{p1:'',p2:''},{p1:'',p2:''},{p1:'',p2:''}]});
+    }
+    rounds.push({label:labels[rIdx], matches});
+    current = matches.map(()=>null);
+  }
+
+  rounds[0].matches.forEach(m=>{
+    if(m.p1 && m.p1.isBye && m.p2) m.winner = m.p2;
+    if(m.p2 && m.p2.isBye && m.p1) m.winner = m.p1;
+  });
+  propagateWinners(rounds);
+
+  STATE.activeDraws[idx] = {drawSize, tplKey, rounds, complete:false};
+  saveState();
+  renderAll();
+}
+
+function propagateWinners(rounds){
+  for(let r=0;r<rounds.length-1;r++){
+    const thisRound = rounds[r].matches;
+    const nextRound = rounds[r+1].matches;
+    for(let i=0;i<thisRound.length;i++){
+      const winner = thisRound[i].winner;
+      const nextMatchIdx = Math.floor(i/2);
+      const slotKey = (i%2===0)?'p1':'p2';
+      nextRound[nextMatchIdx][slotKey] = winner ? {name:winner.name, seed:winner.seed, isBye:false} : null;
+    }
+  }
+}
+
+function setWinner(idx, roundIdx, matchIdx, slotKey){
+  const draw = STATE.activeDraws[idx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  const player = slotKey==='p1'?m.p1:m.p2;
+  if(!player || !player.name || player.isBye) return;
+  m.winner = player;
+  propagateWinners(draw.rounds);
+  const lastRound = draw.rounds[draw.rounds.length-1];
+  draw.complete = !!lastRound.matches[0].winner;
+  saveState();
+  renderTournamentCard(idx);
+}
+
+function updateSlotName(idx, roundIdx, matchIdx, slotKey, value){
+  const draw = STATE.activeDraws[idx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  if(slotKey==='p1'){ if(!m.p1) m.p1={name:'',seed:null,isBye:false}; m.p1.name=value; }
+  else { if(!m.p2) m.p2={name:'',seed:null,isBye:false}; m.p2.name=value; }
+  saveState();
+}
+
+function parseSetsWinner(scoreStr){
+  if(!scoreStr) return null;
+  const clean = scoreStr.replace(/\([^)]*\)/g, ''); // strip tiebreak point counts, e.g. 7-6(4)
+  const setTokens = clean.split(/[,;]/).map(s=>s.trim()).filter(Boolean);
+  let p1sets=0, p2sets=0, any=false;
+  setTokens.forEach(tok=>{
+    const m = tok.match(/(\d+)\s*-\s*(\d+)/);
+    if(!m) return;
+    any = true;
+    const a=parseInt(m[1]), b=parseInt(m[2]);
+    if(a>b) p1sets++; else if(b>a) p2sets++;
+  });
+  if(!any) return null;
+  if(p1sets>p2sets) return 'p1';
+  if(p2sets>p1sets) return 'p2';
+  return null;
+}
+
+function ensureSets(m){
+  if(!m.sets) m.sets = [{p1:'',p2:''},{p1:'',p2:''},{p1:'',p2:''}];
+}
+
+function computeSetsWinner(sets){
+  let p1sets=0, p2sets=0;
+  sets.forEach(s=>{
+    const a = s.p1===''||s.p1==null ? null : parseInt(s.p1);
+    const b = s.p2===''||s.p2==null ? null : parseInt(s.p2);
+    if(a==null || b==null || isNaN(a) || isNaN(b)) return;
+    if(a>b) p1sets++; else if(b>a) p2sets++;
+  });
+  if(p1sets>=2) return 'p1';
+  if(p2sets>=2) return 'p2';
+  return null;
+}
+
+function updateSetScore(idx, roundIdx, matchIdx, setIdx, key, value){
+  const draw = STATE.activeDraws[idx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  ensureSets(m);
+  m.sets[setIdx][key] = value;
+  const outcome = computeSetsWinner(m.sets);
+  if(outcome && m.p1 && m.p2 && !m.p1.isBye && !m.p2.isBye && m.p1.name && m.p2.name){
+    m.winner = outcome==='p1' ? m.p1 : m.p2;
+  } else {
+    m.winner = null;
+  }
+  propagateWinners(draw.rounds);
+  const lastRound = draw.rounds[draw.rounds.length-1];
+  draw.complete = !!lastRound.matches[0].winner;
+  saveState();
+  renderTournamentCard(idx);
+}
+
+function renderBracket(host, ev, idx){
+  const draw = STATE.activeDraws[idx];
+  let cols = '';
+  draw.rounds.forEach((round, rIdx)=>{
+    let matches = '';
+    round.matches.forEach((m, mIdx)=>{
+      ensureSets(m);
+      const bothReal = m.p1 && m.p2 && !m.p1.isBye && !m.p2.isBye;
+
+      const row = (p, key) => {
+        if(!p) return `<div class="mrow"><span class="seedno"></span><span class="mname">TBD</span></div>`;
+        if(p.isBye) return `<div class="mrow bye"><span class="seedno"></span><span class="mname">BYE</span></div>`;
+        const isWinner = m.winner && m.winner.name===p.name && m.winner.seed===p.seed;
+        const seedTag = p.seed?('#'+p.seed):'';
+        const nameHtml = (rIdx===0)
+          ? `<input type="text" list="playerList" class="mname-input" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="Type a name..."
+              onclick="event.stopPropagation()" onchange="updateSlotName(${idx},${rIdx},${mIdx},'${key}',this.value)">`
+          : `<span class="mname">${p.name||'TBD'}</span>`;
+        const setInputs = bothReal ? [0,1,2].map(si => `<input type="number" min="0" max="99"
+            value="${m.sets[si][key]}" onclick="event.stopPropagation()"
+            onchange="updateSetScore(${idx},${rIdx},${mIdx},${si},'${key}',this.value)">`).join('') : '';
+        return `<div class="mrow ${isWinner?'winner':''}" onclick="setWinner(${idx},${rIdx},${mIdx},'${key}')">
+          <span class="seedno">${seedTag}</span>${playerFlag(p.name)}${nameHtml}
+          ${isWinner?'<span class="checkmark">\u2713</span>':''}
+          <div class="msets">${setInputs}</div>
+        </div>`;
+      };
+      matches += `<div class="match">${row(m.p1,'p1')}${row(m.p2,'p2')}</div>`;
+    });
+    cols += `<div class="round-col"><div class="round-title">${round.label}</div>${matches}</div>`;
+  });
+
+  let banner = '';
+  if(draw.complete){
+    const champ = draw.rounds[draw.rounds.length-1].matches[0].winner;
+    banner = `<div class="champion-banner">
+      <div><div class="title">Champion</div><div class="name">\ud83c\udfc6 ${champ.name}</div></div>
+      <button class="btn" style="background:var(--accent);color:#1E1029" onclick="applyResults(${idx})">Apply Results</button>
+    </div>`;
+  }
+
+  host.innerHTML = `<div class="card">
+    <h2>${ev.name} — ${ev.city}</h2>
+    <p class="muted">${catLabel(ev.category)} \u00b7 ${ev.surface} \u00b7 draw of ${draw.drawSize} \u00b7 points: ${STATE.templates[draw.tplKey].label}</p>
+    <p class="helptext">Enter each set's games for both players (e.g. 6, 3, 6) — first to 2 sets is auto-advanced with a checkmark. Click a player's row directly only to override (walkovers, retirements). Round 1 blank slots (wildcards / qualifiers) — start typing to search existing players, or type a new name.</p>
+    <div class="bracket-wrap"><div class="bracket">${cols}</div></div>
+    ${banner}
+    <button class="btn secondary small" style="margin-top:12px" onclick="resetDraw(${idx})">Discard &amp; restart this draw</button>
+  </div>`;
+  addPlayerDatalist();
+}
+
+function resetDraw(idx){
+  delete STATE.activeDraws[idx];
+  saveState();
+  renderAll();
+}
+
+async function applyResults(idx){
+  const ev = STATE.calendar[idx];
+  const draw = STATE.activeDraws[idx];
+  const tpl = STATE.templates[draw.tplKey];
+  const weekSlot = weekLabelToSlotIndex(ev.week);
+
+  const numRounds = draw.rounds.length;
+  const champion = draw.rounds[numRounds-1].matches[0].winner;
+  if(champion){ ensurePlayer(champion.name).pts[weekSlot] = tpl.W || 0; }
+
+  for(let r=numRounds-1; r>=0; r--){
+    const key = ROUND_KEY_FROM_FINAL[numRounds-1-r];
+    draw.rounds[r].matches.forEach(m=>{
+      if(!m.winner) return;
+      const loser = (m.p1 && m.winner.name===m.p1.name && m.winner.seed===m.p1.seed) ? m.p2 : m.p1;
+      if(loser && !loser.isBye && loser.name){
+        const pts = tpl[key];
+        if(pts!=null) ensurePlayer(loser.name).pts[weekSlot] = pts;
+      }
+    });
+  }
+
+  STATE.players.forEach(p=>{ p.total = p.pts.reduce((a,b)=>a+(b||0),0); });
+  STATE.players.sort((a,b)=>b.total-a.total);
+
+  const finalM = draw.rounds[numRounds-1].matches[0];
+  const runnerup = (finalM.p1 && finalM.winner.name===finalM.p1.name) ? finalM.p2 : finalM.p1;
+  const sfLosers = numRounds>=2 ? draw.rounds[numRounds-2].matches.map(m=>{
+    const l = (m.p1 && m.winner && m.winner.name===m.p1.name)? m.p2 : m.p1;
+    return l ? l.name : null;
+  }).filter(Boolean) : [];
+  ev.result = {champion: champion?champion.name:'', runnerup: runnerup?runnerup.name:'', sf: sfLosers, qf: []};
+  ev.status = 'completed';
+
+  const weekDone = advanceWeekIfDone();
+  await saveState();
+  renderAll();
+  toast(weekDone ? `${ev.name} complete — week finished, rankings updated.` : `${ev.name} complete — rankings updated.`);
+  if(weekDone) document.querySelector('nav.tabs button[data-tab="season"]').click();
+}
+
+function startFinals(idx){
+  const names=[];
+  for(let i=1;i<=8;i++){
+    const v = document.getElementById('finalist'+idx+'-'+i).value.trim();
+    names.push(v || ('Finalist '+i));
+  }
+  STATE.activeDraws[idx] = {isRR:true, tplKey: document.getElementById('tplSelect-'+idx).value,
+    players: names.map(n=>({name:n, wins:0})), champion:null, runnerup:null, complete:false};
+  saveState();
+  renderAll();
+}
+function renderFinalsRR(host, ev, idx){
+  const draw = STATE.activeDraws[idx];
+  let rows = draw.players.map((p,i)=>`
+    <div class="rr-grid">
+      <div>${p.name}</div>
+      <div><input type="number" min="0" max="3" value="${p.wins}" onchange="updateRRWins(${idx},${i}, this.value)"></div>
+      <div>${p.wins} win${p.wins===1?'':'s'}</div>
+    </div>`).join('');
+  host.innerHTML = `<div class="card">
+    <h2>${ev.name} — ${ev.city}</h2>
+    <p class="muted">Round robin: set each player's group-stage win total (0\u20133), then pick the two finalists and the champion.</p>
+    <div class="rr-grid head"><div>Player</div><div>Wins</div><div></div></div>
+    ${rows}
+    <div class="grid2" style="margin-top:14px">
+      <div class="field"><label>Runner-up</label><select id="rrRunnerup-${idx}">${draw.players.map(p=>`<option ${draw.runnerup===p.name?'selected':''}>${p.name}</option>`).join('')}</select></div>
+      <div class="field"><label>Champion</label><select id="rrChampion-${idx}">${draw.players.map(p=>`<option ${draw.champion===p.name?'selected':''}>${p.name}</option>`).join('')}</select></div>
+    </div>
+    <button class="btn" onclick="finishFinals(${idx})">Apply Results</button>
+  </div>`;
+}
+function updateRRWins(idx,i,val){
+  STATE.activeDraws[idx].players[i].wins = parseInt(val)||0;
+  saveState();
+}
+async function finishFinals(idx){
+  const ev = STATE.calendar[idx];
+  const draw = STATE.activeDraws[idx];
+  const tpl = STATE.templates[draw.tplKey];
+  const champion = document.getElementById('rrChampion-'+idx).value;
+  const runnerup = document.getElementById('rrRunnerup-'+idx).value;
+  const weekSlot = weekLabelToSlotIndex(ev.week);
+  const rrPts = {0:tpl.RR0,1:tpl.RR1,2:tpl.RR2,3:tpl.RR3};
+  draw.players.forEach(p=>{
+    let pts = rrPts[p.wins] || 0;
+    if(p.name===champion) pts += (tpl.W||0);
+    else if(p.name===runnerup) pts += (tpl.F||0);
+    ensurePlayer(p.name).pts[weekSlot]=pts;
+  });
+  STATE.players.forEach(p=>{ p.total = p.pts.reduce((a,b)=>a+(b||0),0); });
+  STATE.players.sort((a,b)=>b.total-a.total);
+  ev.result = {champion, runnerup, sf:[], qf:[]};
+  ev.status='completed';
+  const weekDone = advanceWeekIfDone();
+  await saveState();
+  renderAll();
+  toast('Season complete! Final rankings are set.');
+  document.querySelector('nav.tabs button[data-tab="rankings"]').click();
+}
+
+let rankViewMode = 'list';
+let expandedPlayer = null;
+
+function renderRankings(){
+  const el = document.getElementById('panel-rankings');
+  el.innerHTML = `<div class="card">
+    <h2>WTA Singles Rankings <span class="muted">(${STATE.players.length} players)</span></h2>
+    <div class="search-bar">
+      <input type="text" id="rankSearch" placeholder="Search player..." oninput="filterRankings()">
+      <button class="btn small secondary" id="viewToggleBtn" onclick="toggleRankView()">Show full weekly grid</button>
+    </div>
+    <div id="rankTableWrap"></div>
+  </div>`;
+  fillRankingsTable('');
+}
+function toggleRankView(){
+  rankViewMode = rankViewMode==='list' ? 'grid' : 'list';
+  document.getElementById('viewToggleBtn').textContent = rankViewMode==='list' ? 'Show full weekly grid' : 'Show simple list';
+  fillRankingsTable(document.getElementById('rankSearch').value);
+}
+function filterRankings(){
+  fillRankingsTable(document.getElementById('rankSearch').value);
+}
+function fillRankingsTable(filter){
+  const wrap = document.getElementById('rankTableWrap');
+  const sorted = [...STATE.players].sort((a,b)=>b.total-a.total);
+  const f = filter.toLowerCase();
+  const filtered = sorted.filter(p=>p.name.toLowerCase().includes(f));
+
+  if(rankViewMode==='grid'){
+    const headCols = STATE.weekLabels.map(l=>`<th>Wk ${l}</th>`).join('');
+    const bodyRows = filtered.map(p=>{
+      const rank = sorted.indexOf(p)+1;
+      const cells = p.pts.map(v=>`<td>${v?v:'\u2013'}</td>`).join('');
+      return `<tr class="${rank<=10?'top10':''}"><td class="rank-no">${rank}</td><td>${flagEmoji(p.country)} ${p.name}</td><td><b>${p.total}</b></td>${cells}</tr>`;
+    }).join('');
+    wrap.innerHTML = `<div class="grid-view"><table><thead><tr><th>#</th><th>Player</th><th>Total</th>${headCols}</tr></thead>
+      <tbody>${bodyRows}</tbody></table></div>`;
+    return;
+  }
+
+  const rows = filtered.map(p=>{
+    const rank = sorted.indexOf(p)+1;
+    let rowHtml = `<tr class="rank-row ${rank<=10?'top10':''}" onclick="toggleBreakdown('${p.name.replace(/'/g,"\\'")}')">
+      <td class="rank-no">${rank}</td><td>${flagEmoji(p.country)} ${p.name}</td><td>${p.total.toLocaleString()}</td></tr>`;
+    if(expandedPlayer===p.name){
+      const chips = p.pts.map((v,i)=> v ? `<span class="breakdown-chip">Wk ${STATE.weekLabels[i]}: <b>${v}</b></span>` : '').join('');
+      rowHtml += `<tr class="breakdown-row"><td></td><td colspan="2">
+        <div style="margin-bottom:8px"><label style="display:inline-block;margin-right:8px">Nationality</label>
+          <select style="width:auto;display:inline-block" onclick="event.stopPropagation()" onchange="event.stopPropagation();updateCountry('${p.name.replace(/'/g,"\\'")}',this.value)">${countryOptions(p.country)}</select>
+        </div>
+        ${chips || '<span class="muted">No points yet this cycle.</span>'}</td></tr>`;
+    }
+    return rowHtml;
+  }).join('');
+  wrap.innerHTML = `<table><thead><tr><th>#</th><th>Player</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function toggleBreakdown(name){
+  expandedPlayer = (expandedPlayer===name) ? null : name;
+  fillRankingsTable(document.getElementById('rankSearch').value);
+}
+
+const PT_ROUNDS = ['W','F','SF','QF','R16','R32','R64','R128','Q','Q1'];
+function renderPoints(){
+  const el = document.getElementById('panel-points');
+  let rows='';
+  Object.entries(STATE.templates).forEach(([key,tpl])=>{
+    rows += `<tr><td>${tpl.label}</td>${PT_ROUNDS.map(c=>{
+      const v = tpl[c];
+      return `<td>${v===undefined?'':`<input type="number" value="${v===null?'':v}" onchange="updatePts('${key}','${c}',this.value)">`}</td>`;
+    }).join('')}</tr>`;
+  });
+  el.innerHTML = `<div class="card">
+    <h2>Points Templates</h2>
+    <p class="muted">These values drive every calculation. Edit any cell — changes apply the next time you complete a draw. Round-robin template (WTA Finals) uses its own columns.</p>
+    <div style="overflow-x:auto"><table class="pt-table"><thead><tr><th>Category</th>${PT_ROUNDS.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table></div>
+  </div>`;
+}
+function updatePts(key, col, val){
+  STATE.templates[key][col] = val===''?null:parseInt(val);
+  saveState();
+}
+
+function renderAll(){
+  const wv = currentWeekVal();
+  const pill = document.getElementById('weekPill');
+  if(wv!=null){
+    const names = currentWeekEvents().filter(x=>x.e.category!=='BYE').map(x=>x.e.name).join(' + ');
+    pill.innerHTML = `Week ${wv}<small>${names || 'Bye week'}</small>`;
+  } else {
+    pill.textContent = 'Season complete';
+  }
+  renderSeason();
+  renderDraw();
+  renderRankings();
+  renderPoints();
+}
+
+(async function init(){
+  await loadState();
+  renderAll();
+})();
+</script>
+</body>
+</html>

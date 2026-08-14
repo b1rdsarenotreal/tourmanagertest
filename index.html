@@ -151,24 +151,36 @@
   .rr-grid.head{font-size:11px;font-weight:800;text-transform:uppercase;color:#5C4478;}
   .helptext{font-size:12px;color:#7C6A94;margin-top:6px;line-height:1.5;}
   .flag{margin-right:3px;}
+  .ro-set{display:inline-flex;align-items:center;justify-content:center;width:26px;height:24px;font-size:12.5px;color:var(--ink);flex:none;}
+  .archive-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:4px;cursor:pointer;}
+  .archive-row:hover{background:var(--paper-2);}
+  .archive-row + .archive-row{border-top:1px solid #EBDCF6;}
+  .archive-detail{padding:12px 4px 6px;}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <h1>Tour <span>Manager</span></h1>
-    <div class="week-pill" id="weekPill">—</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button class="btn small secondary" onclick="exportSave()">Export Save</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importSave(event)">
+      <button class="btn small secondary" onclick="document.getElementById('importFile').click()">Import Save</button>
+      <div class="week-pill" id="weekPill">—</div>
+    </div>
   </header>
 
   <nav class="tabs">
     <button data-tab="season" class="active">Season</button>
     <button data-tab="draw">This Week</button>
+    <button data-tab="results">Results</button>
     <button data-tab="rankings">Rankings</button>
     <button data-tab="points">Points Table</button>
   </nav>
 
   <section class="panel active" id="panel-season"></section>
   <section class="panel" id="panel-draw"></section>
+  <section class="panel" id="panel-results"></section>
   <section class="panel" id="panel-rankings"></section>
   <section class="panel" id="panel-points"></section>
 </div>
@@ -246,21 +258,69 @@ function defaultState(){
     calendar,
     currentWeekIdx: order.indexOf(curWeekVal),
     activeDraws: {},
+    archivedDraws: {},
     templates: JSON.parse(JSON.stringify(DEFAULT_TEMPLATES))
   };
 }
 
+const STORAGE_KEY = 'wta-tour-state-v2';
+const hasClaudeStorage = typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+
 async function loadState(){
   try{
-    const res = await window.storage.get('wta-tour-state-v2', false);
-    if(res && res.value){ STATE = JSON.parse(res.value); return; }
+    if(hasClaudeStorage){
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){ STATE = JSON.parse(res.value); return; }
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){ STATE = JSON.parse(raw); return; }
+    }
   }catch(e){}
   STATE = defaultState();
   await saveState();
 }
 async function saveState(){
-  try{ await window.storage.set('wta-tour-state-v2', JSON.stringify(STATE), false); }
-  catch(e){ console.error('save failed', e); }
+  try{
+    if(hasClaudeStorage){
+      await window.storage.set(STORAGE_KEY, JSON.stringify(STATE), false);
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+    }
+  }catch(e){ console.error('save failed', e); }
+}
+function exportSave(){
+  const blob = new Blob([JSON.stringify(STATE, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const wv = currentWeekVal();
+  a.href = url;
+  a.download = `wta-tour-save-week${wv!=null?wv:'end'}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Save file downloaded.');
+}
+function importSave(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.calendar || !parsed.players){ toast("That file doesn't look like a valid save."); return; }
+      STATE = parsed;
+      if(!STATE.archivedDraws) STATE.archivedDraws = {};
+      if(!STATE.activeDraws) STATE.activeDraws = {};
+      await saveState();
+      renderAll();
+      toast('Save imported.');
+    }catch(e){
+      toast('Could not read that file.');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
 }
 function toast(msg){
   const t=document.getElementById('toast');
@@ -425,15 +485,62 @@ function renderDraw(){
   realEvents.forEach(({e,i})=> renderTournamentCard(i));
 }
 
+function getArchivedDraw(idx){
+  return (STATE.archivedDraws && STATE.archivedDraws[idx]) || STATE.activeDraws[idx] || null;
+}
+
+let expandedArchive = new Set();
+function toggleThisWeekArchive(idx){
+  if(expandedArchive.has(idx)) expandedArchive.delete(idx); else expandedArchive.add(idx);
+  renderTournamentCard(idx);
+}
+
+function renderReadonlyBracket(draw){
+  let cols = '';
+  draw.rounds.forEach(round=>{
+    let matches = '';
+    round.matches.forEach(m=>{
+      ensureSets(m);
+      const row = (p, key) => {
+        if(!p) return `<div class="mrow"><span class="seedno"></span><span class="mname">TBD</span></div>`;
+        if(p.isBye) return `<div class="mrow bye"><span class="seedno"></span><span class="mname">BYE</span></div>`;
+        const isWinner = m.winner && m.winner.name===p.name && m.winner.seed===p.seed;
+        const seedTag = p.seed?('#'+p.seed):'';
+        const setsHtml = m.sets.map(s=> `<span class="ro-set">${s[key]!==''&&s[key]!=null ? s[key] : '\u2013'}</span>`).join('');
+        return `<div class="mrow ${isWinner?'winner':''}">
+          <span class="seedno">${seedTag}</span>${playerFlag(p.name)}<span class="mname">${p.name||'TBD'}</span>
+          ${isWinner?'<span class="checkmark">\u2713</span>':''}
+          <div class="msets">${setsHtml}</div>
+        </div>`;
+      };
+      matches += `<div class="match">${row(m.p1,'p1')}${row(m.p2,'p2')}</div>`;
+    });
+    cols += `<div class="round-col"><div class="round-title">${round.label}</div>${matches}</div>`;
+  });
+  return `<div class="bracket-wrap"><div class="bracket">${cols}</div></div>`;
+}
+
+function renderReadonlyRR(draw){
+  const rows = draw.players.map(p=>{
+    const tag = p.name===draw.champion ? ' \ud83c\udfc6 Champion' : (p.name===draw.runnerup ? ' Runner-up' : '');
+    return `<div class="rr-grid"><div>${playerFlag(p.name)}${p.name}${tag}</div><div>${p.wins} win${p.wins===1?'':'s'}</div><div></div></div>`;
+  }).join('');
+  return `<div>${rows}</div>`;
+}
+
 function renderTournamentCard(idx){
   const host = document.getElementById('tourn-'+idx);
   if(!host) return;
   const ev = STATE.calendar[idx];
   if(ev.status==='completed'){
+    const draw = getArchivedDraw(idx);
+    const expanded = expandedArchive.has(idx);
     host.innerHTML = `<div class="card">
       <div class="tourn-card-header"><h2 style="margin:0">${ev.name} — ${ev.city}</h2><span class="done-badge">Completed</span></div>
       <p class="muted">${catLabel(ev.category)} \u00b7 ${ev.surface}</p>
       <p>\ud83c\udfc6 <b>${ev.result.champion}</b> d. ${ev.result.runnerup}</p>
+      ${draw ? `<button class="btn secondary small" onclick="toggleThisWeekArchive(${idx})">${expanded?'Hide':'View'} Bracket &amp; Scores</button>` : ''}
+      ${expanded && draw ? (draw.isRR ? renderReadonlyRR(draw) : renderReadonlyBracket(draw)) : ''}
     </div>`;
     return;
   }
@@ -752,6 +859,8 @@ async function applyResults(idx){
   }).filter(Boolean) : [];
   ev.result = {champion: champion?champion.name:'', runnerup: runnerup?runnerup.name:'', sf: sfLosers, qf: []};
   ev.status = 'completed';
+  STATE.archivedDraws[idx] = draw;
+  delete STATE.activeDraws[idx];
 
   const weekDone = advanceWeekIfDone();
   await saveState();
@@ -813,6 +922,8 @@ async function finishFinals(idx){
   STATE.players.sort((a,b)=>b.total-a.total);
   ev.result = {champion, runnerup, sf:[], qf:[]};
   ev.status='completed';
+  STATE.archivedDraws[idx] = draw;
+  delete STATE.activeDraws[idx];
   const weekDone = advanceWeekIfDone();
   await saveState();
   renderAll();
@@ -904,6 +1015,51 @@ function updatePts(key, col, val){
   saveState();
 }
 
+let expandedResult = null;
+function toggleResultView(idx){
+  expandedResult = (expandedResult===idx) ? null : idx;
+  renderResults();
+}
+
+function renderResults(){
+  const el = document.getElementById('panel-results');
+  const completed = STATE.calendar.map((e,i)=>({e,i})).filter(x=>x.e.category!=='BYE' && x.e.status==='completed');
+
+  if(completed.length===0){
+    el.innerHTML = `<div class="card"><h2>Results Archive</h2>
+      <div class="empty-state">No tournaments completed yet — finish a draw in "This Week" and it'll show up here with the full bracket and every set score.</div>
+    </div>`;
+    return;
+  }
+
+  let lastMonth = null;
+  let rows = '';
+  completed.forEach(({e,i})=>{
+    const month = e.date.split(' ')[0];
+    if(month!==lastMonth){ rows += `<div class="month-label">${month}</div>`; lastMonth=month; }
+    const draw = getArchivedDraw(i);
+    const expanded = expandedResult===i;
+    rows += `<div class="archive-row" onclick="toggleResultView(${i})">
+      <div class="ev-week">Wk ${e.week}</div>
+      <div class="ev-name">${e.name}</div>
+      <div class="ev-city">${e.city}</div>
+      <span class="ev-cat">${catLabel(e.category)}${e.drawSize?(' \u00b7 S'+e.drawSize):''}</span>
+      <div class="ev-result">\ud83c\udfc6 ${e.result.champion} d. ${e.result.runnerup}</div>
+    </div>`;
+    if(expanded && draw){
+      rows += `<div class="archive-detail">${draw.isRR ? renderReadonlyRR(draw) : renderReadonlyBracket(draw)}</div>`;
+    } else if(expanded && !draw){
+      rows += `<div class="archive-detail muted">No bracket data was saved for this event (it may have been completed before this feature was added).</div>`;
+    }
+  });
+
+  el.innerHTML = `<div class="card">
+    <h2>Results Archive <span class="muted">(${completed.length} completed)</span></h2>
+    <p class="muted">Click any result to open its full bracket with every set score.</p>
+    ${rows}
+  </div>`;
+}
+
 function renderAll(){
   const wv = currentWeekVal();
   const pill = document.getElementById('weekPill');
@@ -915,12 +1071,15 @@ function renderAll(){
   }
   renderSeason();
   renderDraw();
+  renderResults();
   renderRankings();
   renderPoints();
 }
 
 (async function init(){
   await loadState();
+  if(!STATE.archivedDraws) STATE.archivedDraws = {};
+  if(!STATE.activeDraws) STATE.activeDraws = {};
   renderAll();
 })();
 </script>

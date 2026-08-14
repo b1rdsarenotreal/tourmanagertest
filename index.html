@@ -259,6 +259,7 @@ function defaultState(){
     currentWeekIdx: order.indexOf(curWeekVal),
     activeDraws: {},
     archivedDraws: {},
+    qualifying: {},
     templates: JSON.parse(JSON.stringify(DEFAULT_TEMPLATES))
   };
 }
@@ -312,6 +313,7 @@ function importSave(event){
       STATE = parsed;
       if(!STATE.archivedDraws) STATE.archivedDraws = {};
       if(!STATE.activeDraws) STATE.activeDraws = {};
+      if(!STATE.qualifying) STATE.qualifying = {};
       await saveState();
       renderAll();
       toast('Save imported.');
@@ -371,6 +373,55 @@ function weekLabelToSlotIndex(week){
     return false;
   });
   return idx>=0?idx:0;
+}
+
+// ================= ENTRY LIST / QUALIFYING =================
+function fieldDefaults(category, drawSize){
+  if(category==='GS') return {wildcards:8, qualifyingSpots:16, qualifyingRounds:3, numSeeds:32};
+  if(category==='1000') return drawSize>=80
+    ? {wildcards:8, qualifyingSpots:12, qualifyingRounds:2, numSeeds:32}
+    : {wildcards:4, qualifyingSpots:8,  qualifyingRounds:2, numSeeds:16};
+  if(category==='500') return {wildcards:4, qualifyingSpots:4, qualifyingRounds:2, numSeeds:8};
+  if(category==='250') return {wildcards:3, qualifyingSpots:4, qualifyingRounds:2, numSeeds:8};
+  return {wildcards:2, qualifyingSpots:2, qualifyingRounds:2, numSeeds:4};
+}
+function ensureEntryFields(ev){
+  if(ev.wildcards==null){
+    const d = fieldDefaults(ev.category, ev.drawSize);
+    ev.wildcards = d.wildcards;
+    ev.qualifyingSpots = d.qualifyingSpots;
+    ev.qualifyingRounds = d.qualifyingRounds;
+    ev.numSeeds = d.numSeeds;
+  }
+}
+function generateEntryList(ev){
+  ensureEntryFields(ev);
+  const sorted = [...STATE.players].sort((a,b)=>b.total-a.total);
+  const groupSize = Math.pow(2, ev.qualifyingRounds);
+  const qualPoolSize = ev.qualifyingSpots * groupSize;
+  const directSpots = Math.max(0, ev.drawSize - ev.wildcards - ev.qualifyingSpots);
+  const used = new Set();
+  const direct = [];
+  for(const p of sorted){ if(direct.length>=directSpots) break; direct.push(p.name); used.add(p.name); }
+  const qualifyingPool = [];
+  for(const p of sorted){ if(used.has(p.name)) continue; if(qualifyingPool.length>=qualPoolSize) break; qualifyingPool.push(p.name); used.add(p.name); }
+  const alternates = [];
+  for(const p of sorted){ if(used.has(p.name)) continue; if(alternates.length>=8) break; alternates.push(p.name); }
+  ev.entryList = { generatedAtWeek: currentWeekVal(), direct, qualifyingPool, alternates };
+}
+function checkEntryLists(){
+  const order = weeksOrder(STATE.calendar);
+  const curPos = STATE.currentWeekIdx;
+  STATE.calendar.forEach(ev=>{
+    if(ev.category==='BYE' || ev.category==='FINALS') return;
+    if(ev.entryList) return;
+    const evPos = order.indexOf(ev.week);
+    if(evPos===-1) return;
+    if(evPos - curPos <= 3){
+      ensureEntryFields(ev);
+      generateEntryList(ev);
+    }
+  });
 }
 
 function renderSeason(){
@@ -436,6 +487,7 @@ function advanceWeekIfDone(){
   } else {
     STATE.currentWeekIdx = order.length;
   }
+  checkEntryLists();
   return true;
 }
 
@@ -479,10 +531,10 @@ function renderDraw(){
 
   let html = `<p class="muted" style="margin-bottom:12px">Complete every draw below to unlock next week.</p>`;
   realEvents.forEach(({e,i})=>{
-    html += `<div id="tourn-${i}"></div>`;
+    html += `<div id="qual-${i}"></div><div id="tourn-${i}"></div>`;
   });
   el.innerHTML = html;
-  realEvents.forEach(({e,i})=> renderTournamentCard(i));
+  realEvents.forEach(({e,i})=> { renderQualifyingCard(i); renderTournamentCard(i); });
 }
 
 function getArchivedDraw(idx){
@@ -581,12 +633,19 @@ function renderDrawSetup(host, ev, idx){
   }
 
   const drawDefault = ev.drawSize;
+  ensureEntryFields(ev);
+  if(!ev.entryList) generateEntryList(ev);
   const byesDefault = nextPow2(drawDefault) - drawDefault;
-  const baseSeeds = drawDefault>=64 ? 16 : 8;
-  const seedsDefault = Math.max(baseSeeds, byesDefault);
+  const seedsDefault = Math.max(ev.numSeeds, byesDefault);
+  const qual = STATE.qualifying[idx];
+  const qualNote = ev.qualifyingSpots<=0 ? 'No qualifying for this event.'
+    : (qual && qual.complete) ? `Qualifiers decided: <b>${qual.qualifiers.join(', ')}</b>.`
+    : (qual) ? 'Qualifying is in progress — see the Qualifying card above.'
+    : `Qualifying hasn't been played yet — placeholder "Qualifier" names will fill those spots until it is.`;
   host.innerHTML = `<div class="card">
     <h2>${ev.name} — ${ev.city}</h2>
     <p class="muted">${catLabel(ev.category)} \u00b7 ${ev.surface} \u00b7 ${ev.drawSize}-player draw</p>
+    <p class="helptext"><b>Entry list</b> locked at Week ${ev.entryList.generatedAtWeek} (based on rankings at that time): ${ev.entryList.direct.length} direct acceptances, ${ev.wildcards} wildcard slot${ev.wildcards===1?'':'s'}, ${ev.qualifyingSpots} qualifying spot${ev.qualifyingSpots===1?'':'s'} out of ${ev.entryList.qualifyingPool.length} in the qualifying pool. ${qualNote}</p>
     <div class="grid3">
       <div class="field"><label>Draw size</label><input type="number" id="drawSizeInput-${idx}" value="${drawDefault}" min="4" max="128"></div>
       <div class="field"><label>Number of seeds</label><input type="number" id="numSeedsInput-${idx}" value="${seedsDefault}" min="0" max="32"></div>
@@ -596,19 +655,23 @@ function renderDrawSetup(host, ev, idx){
     <button class="btn secondary small" onclick="rebuildSeedInputs(${idx})">Update seed slots</button>
     <div style="height:10px"></div>
     <button class="btn" onclick="generateDraw(${idx})">Generate Draw</button>
-    <div class="helptext">Top players from the current rankings are pre-filled as suggested seeds — edit freely. Unseeded slots (wildcards, qualifiers, alternates) are filled in on the bracket itself after it's generated. Keep the seed count at or above the number of first-round byes (${byesDefault} here) so every bye lands on a seeded player.</div>
+    <div class="helptext">Seeds are suggested from the entry list's direct acceptances, ordered by <b>current</b> rankings — edit any name freely. The rest of the direct acceptances, wildcards, and qualifiers fill in the remaining bracket slots automatically once generated (still editable on the bracket itself). Keep the seed count at or above the number of first-round byes (${byesDefault} here) so every bye lands on a seeded player.</div>
   </div>`;
   rebuildSeedInputs(idx);
   addPlayerDatalist();
 }
 
 function rebuildSeedInputs(idx){
+  const ev = STATE.calendar[idx];
+  ensureEntryFields(ev);
+  if(!ev.entryList) generateEntryList(ev);
   const n = parseInt(document.getElementById('numSeedsInput-'+idx).value)||0;
   const c = document.getElementById('seedEntrants-'+idx);
   c.innerHTML='';
-  const sorted = [...STATE.players].sort((a,b)=>b.total-a.total);
+  const rank = name => { const p=findPlayer(name); return p?p.total:0; };
+  const directSorted = [...ev.entryList.direct].sort((a,b)=>rank(b)-rank(a));
   for(let i=1;i<=n;i++){
-    const suggestion = sorted[i-1] ? sorted[i-1].name : '';
+    const suggestion = directSorted[i-1] || '';
     const row=document.createElement('div');
     row.className='seed-entry';
     row.innerHTML = `<div class="snum">${i}</div><input type="text" list="playerList" value="${suggestion}" id="seed${idx}-${i}">`;
@@ -626,19 +689,12 @@ function addPlayerDatalist(){
   dl.innerHTML = STATE.players.map(p=>`<option value="${p.name.replace(/"/g,'&quot;')}">`).join('');
 }
 
-function generateDraw(idx){
-  const ev = STATE.calendar[idx];
-  const drawSize = parseInt(document.getElementById('drawSizeInput-'+idx).value);
-  const numSeeds = parseInt(document.getElementById('numSeedsInput-'+idx).value);
-  const tplKey = document.getElementById('tplSelect-'+idx).value;
+function buildBracketRounds(drawSize, seedNames, fillPool){
+  fillPool = fillPool ? [...fillPool] : [];
   const slots = nextPow2(drawSize);
   const byes = slots - drawSize;
   const order = seedOrder(slots);
-
-  const seedNames = [];
-  for(let i=1;i<=numSeeds;i++){
-    seedNames.push(document.getElementById('seed'+idx+'-'+i).value.trim());
-  }
+  const numSeeds = seedNames.length;
 
   const positions = new Array(slots).fill(null);
   for(let r=1;r<=numSeeds;r++){
@@ -653,7 +709,10 @@ function generateDraw(idx){
     if(b && byeRanks.has(b.seed) && !a){ positions[i] = {name:'BYE', seed:null, isBye:true}; }
   }
   for(let i=0;i<slots;i++){
-    if(!positions[i]) positions[i] = {name:'', seed:null, isBye:false};
+    if(!positions[i]){
+      const nm = fillPool.length ? fillPool.shift() : '';
+      positions[i] = {name: nm, seed:null, isBye:false};
+    }
   }
 
   const numRounds = Math.log2(slots);
@@ -675,10 +734,173 @@ function generateDraw(idx){
     if(m.p2 && m.p2.isBye && m.p1) m.winner = m.p1;
   });
   propagateWinners(rounds);
+  return rounds;
+}
 
+function generateDraw(idx){
+  const ev = STATE.calendar[idx];
+  ensureEntryFields(ev);
+  if(!ev.entryList) generateEntryList(ev);
+
+  const drawSize = parseInt(document.getElementById('drawSizeInput-'+idx).value);
+  const numSeeds = parseInt(document.getElementById('numSeedsInput-'+idx).value);
+  const tplKey = document.getElementById('tplSelect-'+idx).value;
+  const seedNames = [];
+  for(let i=1;i<=numSeeds;i++){
+    seedNames.push(document.getElementById('seed'+idx+'-'+i).value.trim() || ('Seed '+i));
+  }
+
+  const rank = name => { const p=findPlayer(name); return p?p.total:0; };
+  const directSorted = [...ev.entryList.direct].sort((a,b)=>rank(b)-rank(a));
+  const usedAsSeed = new Set(seedNames);
+  const remainingDirect = directSorted.filter(n=>!usedAsSeed.has(n));
+  const wcNames = Array.from({length: ev.wildcards}, (_,i)=> `Wildcard ${i+1}`);
+  const qual = STATE.qualifying[idx];
+  const qNames = (qual && qual.complete) ? qual.qualifiers.slice()
+    : Array.from({length: ev.qualifyingSpots}, (_,i)=> `Qualifier ${i+1}`);
+  const fillPool = [...remainingDirect, ...wcNames, ...qNames];
+
+  const rounds = buildBracketRounds(drawSize, seedNames, fillPool);
   STATE.activeDraws[idx] = {drawSize, tplKey, rounds, complete:false};
   saveState();
   renderAll();
+}
+
+function generateQualifying(idx){
+  const ev = STATE.calendar[idx];
+  ensureEntryFields(ev);
+  if(!ev.entryList) generateEntryList(ev);
+  const pool = [...ev.entryList.qualifyingPool];
+  const groupSize = Math.pow(2, ev.qualifyingRounds);
+  const groups = [];
+  for(let g=0; g<ev.qualifyingSpots; g++){
+    const chunk = pool.splice(0, groupSize);
+    const rounds = buildBracketRounds(groupSize, [], chunk);
+    groups.push({rounds, complete:false});
+  }
+  STATE.qualifying[idx] = {groups, complete:false, qualifiers:[]};
+  saveState();
+  renderAll();
+}
+
+function checkQualifyingComplete(idx){
+  const qual = STATE.qualifying[idx];
+  if(!qual || qual.complete) return;
+  const allDone = qual.groups.every(g=>g.complete);
+  if(!allDone) return;
+  qual.complete = true;
+  const ev = STATE.calendar[idx];
+  const weekSlot = weekLabelToSlotIndex(ev.week);
+  const tpl = STATE.templates[suggestTemplateKey(ev.category, ev.drawSize)];
+  qual.qualifiers = qual.groups.map(g=>{
+    const finalMatch = g.rounds[g.rounds.length-1].matches[0];
+    const champ = finalMatch.winner;
+    const runnerup = (finalMatch.p1 && champ && finalMatch.p1.name===champ.name && finalMatch.p1.seed===champ.seed) ? finalMatch.p2 : finalMatch.p1;
+    if(champ && champ.name) ensurePlayer(champ.name).pts[weekSlot] = tpl.Q || 0;
+    if(runnerup && runnerup.name && !runnerup.isBye) ensurePlayer(runnerup.name).pts[weekSlot] = tpl.Q1 || 0;
+    return champ ? champ.name : 'Qualifier';
+  });
+  STATE.players.forEach(p=>{ p.total = p.pts.reduce((a,b)=>a+(b||0),0); });
+  STATE.players.sort((a,b)=>b.total-a.total);
+  toast('Qualifying complete — qualifiers are set.');
+}
+
+function qualSetWinner(idx, groupIdx, roundIdx, matchIdx, slotKey){
+  const draw = STATE.qualifying[idx].groups[groupIdx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  const player = slotKey==='p1'?m.p1:m.p2;
+  if(!player || !player.name || player.isBye) return;
+  m.winner = player;
+  propagateWinners(draw.rounds);
+  const lastRound = draw.rounds[draw.rounds.length-1];
+  draw.complete = !!lastRound.matches[0].winner;
+  checkQualifyingComplete(idx);
+  saveState();
+  renderAll();
+}
+
+function qualUpdateSetScore(idx, groupIdx, roundIdx, matchIdx, setIdx, key, value){
+  const draw = STATE.qualifying[idx].groups[groupIdx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  ensureSets(m);
+  m.sets[setIdx][key] = value;
+  const outcome = computeSetsWinner(m.sets);
+  if(outcome && m.p1 && m.p2 && !m.p1.isBye && !m.p2.isBye && m.p1.name && m.p2.name){
+    m.winner = outcome==='p1' ? m.p1 : m.p2;
+  } else {
+    m.winner = null;
+  }
+  propagateWinners(draw.rounds);
+  const lastRound = draw.rounds[draw.rounds.length-1];
+  draw.complete = !!lastRound.matches[0].winner;
+  checkQualifyingComplete(idx);
+  saveState();
+  renderAll();
+}
+
+function qualUpdateSlotName(idx, groupIdx, roundIdx, matchIdx, slotKey, value){
+  const draw = STATE.qualifying[idx].groups[groupIdx];
+  const m = draw.rounds[roundIdx].matches[matchIdx];
+  if(slotKey==='p1'){ if(!m.p1) m.p1={name:'',seed:null,isBye:false}; m.p1.name=value; }
+  else { if(!m.p2) m.p2={name:'',seed:null,isBye:false}; m.p2.name=value; }
+  saveState();
+}
+
+function renderQualifyingCard(idx){
+  const ev = STATE.calendar[idx];
+  const el = document.getElementById('qual-'+idx);
+  if(!el) return;
+  ensureEntryFields(ev);
+  if(ev.qualifyingSpots<=0){ el.innerHTML=''; return; }
+  if(!ev.entryList) generateEntryList(ev);
+  const qual = STATE.qualifying[idx];
+
+  if(!qual){
+    el.innerHTML = `<div class="card">
+      <h2>Qualifying — ${ev.name}</h2>
+      <p class="muted">${ev.entryList.qualifyingPool.length} players competing for ${ev.qualifyingSpots} spot${ev.qualifyingSpots===1?'':'s'} in the main draw, based on the entry list locked at Week ${ev.entryList.generatedAtWeek}.</p>
+      <button class="btn" onclick="generateQualifying(${idx})">Generate Qualifying Draws</button>
+    </div>`;
+    return;
+  }
+
+  let groupsHtml = '';
+  qual.groups.forEach((g, gIdx)=>{
+    let cols = '';
+    g.rounds.forEach((round, rIdx)=>{
+      let matches = '';
+      round.matches.forEach((m, mIdx)=>{
+        ensureSets(m);
+        const bothReal = m.p1 && m.p2 && !m.p1.isBye && !m.p2.isBye;
+        const row = (p, key) => {
+          if(!p) return `<div class="mrow"><span class="seedno"></span><span class="mname">TBD</span></div>`;
+          if(p.isBye) return `<div class="mrow bye"><span class="seedno"></span><span class="mname">BYE</span></div>`;
+          const isWinner = m.winner && m.winner.name===p.name && m.winner.seed===p.seed;
+          const nameHtml = (rIdx===0)
+            ? `<input type="text" list="playerList" class="mname-input" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="Type a name..."
+                onclick="event.stopPropagation()" onchange="qualUpdateSlotName(${idx},${gIdx},${rIdx},${mIdx},'${key}',this.value)">`
+            : `<span class="mname">${p.name||'TBD'}</span>`;
+          const setInputs = bothReal ? [0,1,2].map(si => `<input type="number" min="0" max="99" value="${m.sets[si][key]}"
+              onclick="event.stopPropagation()" onchange="qualUpdateSetScore(${idx},${gIdx},${rIdx},${mIdx},${si},'${key}',this.value)">`).join('') : '';
+          return `<div class="mrow ${isWinner?'winner':''}" onclick="qualSetWinner(${idx},${gIdx},${rIdx},${mIdx},'${key}')">
+            <span class="seedno"></span>${playerFlag(p.name)}${nameHtml}${isWinner?'<span class="checkmark">\u2713</span>':''}
+            <div class="msets">${setInputs}</div>
+          </div>`;
+        };
+        matches += `<div class="match">${row(m.p1,'p1')}${row(m.p2,'p2')}</div>`;
+      });
+      cols += `<div class="round-col"><div class="round-title">${round.label}</div>${matches}</div>`;
+    });
+    groupsHtml += `<div style="margin-bottom:16px"><p class="muted" style="margin-bottom:6px">Qualifying Group ${gIdx+1}${g.complete?' \u2713':''}</p>
+      <div class="bracket-wrap"><div class="bracket">${cols}</div></div></div>`;
+  });
+
+  el.innerHTML = `<div class="card">
+    <h2>Qualifying — ${ev.name}</h2>
+    ${qual.complete ? `<p class="muted">Qualifying complete. Qualifiers: <b>${qual.qualifiers.join(', ')}</b> — they'll fill the Q slots when you generate the main draw below.</p>` : `<p class="helptext">Enter set scores the same way as the main draw \u2014 the winner of each group earns a main draw spot.</p>`}
+    ${groupsHtml}
+  </div>`;
+  addPlayerDatalist();
 }
 
 function propagateWinners(rounds){
@@ -1080,6 +1302,8 @@ function renderAll(){
   await loadState();
   if(!STATE.archivedDraws) STATE.archivedDraws = {};
   if(!STATE.activeDraws) STATE.activeDraws = {};
+  if(!STATE.qualifying) STATE.qualifying = {};
+  checkEntryLists();
   renderAll();
 })();
 </script>
